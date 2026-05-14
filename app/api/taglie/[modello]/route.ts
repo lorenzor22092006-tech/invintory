@@ -3,10 +3,11 @@ import { readSheet, writeSheet } from '@/lib/sheets'
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { modello: string } }
+  { params }: { params: Promise<{ modello: string }> }
 ) {
   try {
-    const modelloId = decodeURIComponent(params.modello).trim().toUpperCase()
+    const { modello } = await params
+    const modelloId = decodeURIComponent(modello).trim().toUpperCase()
 
     const rows = await readSheet('TAGLIE_STOCK!A2:A5000')
     const rowIndex = rows.findIndex(
