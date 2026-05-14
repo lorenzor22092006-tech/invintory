@@ -55,7 +55,7 @@ export default function VitoButton() {
         ...prev,
         {
           role: 'assistant',
-          content: data.reply || data.error || 'Scusa, qualcosa è andato storto.',
+          content: data.reply || `Errore: ${data.error}` || 'Scusa, qualcosa è andato storto.',
         },
       ])
     } catch {

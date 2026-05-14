@@ -230,7 +230,8 @@ Regole importanti:
       )
     }
   } catch (error) {
-    console.error('Vito error:', error)
-    return NextResponse.json({ error: 'Errore del server' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('Vito error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
