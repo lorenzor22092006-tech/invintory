@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readSheet, appendSheet, writeSheet } from '@/lib/sheets'
-import { Venditore } from '@/lib/types'
+import { readSheet, writeSheet } from '@/lib/sheets'
 
 export async function GET() {
   try {
@@ -8,11 +7,15 @@ export async function GET() {
     const categorie = await readSheet('CONFIG!D2:D')
 
     return NextResponse.json({
-      venditori: venditori.map((row) => ({
-        nome: row[0] || '',
-        feePercentuale: parseFloat(row[1]) || 0,
-      })),
-      categorie: categorie.map((row) => row[0] || ''),
+      venditori: venditori
+        .filter((row) => row[0])
+        .map((row) => ({
+          nome: row[0] || '',
+          feePercentuale: parseFloat(String(row[1]).replace('%', '').trim()) || 0,
+        })),
+      categorie: categorie
+        .filter((row) => row[0])
+        .map((row) => row[0]),
     })
   } catch (error) {
     return NextResponse.json({ error: 'Errore lettura config' }, { status: 500 })
@@ -25,11 +28,11 @@ export async function POST(request: Request) {
 
     if (tipo === 'venditore') {
       const rows = await readSheet('CONFIG!A2:B')
-      const nextRow = rows.length + 2
+      const nextRow = rows.filter((r) => r[0]).length + 2
       await writeSheet(`CONFIG!A${nextRow}:B${nextRow}`, [[valore, fee || 0]])
     } else if (tipo === 'categoria') {
       const rows = await readSheet('CONFIG!D2:D')
-      const nextRow = rows.length + 2
+      const nextRow = rows.filter((r) => r[0]).length + 2
       await writeSheet(`CONFIG!D${nextRow}`, [[valore]])
     }
 

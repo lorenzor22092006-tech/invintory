@@ -1,79 +1,97 @@
 import { NextResponse } from 'next/server'
+import { google } from 'googleapis'
 import { readSheet, writeSheet } from '@/lib/sheets'
-import { CapoStock } from '@/lib/types'
+import { nextRowAfterLastSku } from '@/lib/sheet-helpers'
 
 export async function GET() {
   try {
-    const rows = await readSheet('STOCK!A2:J')
-    const capi: CapoStock[] = rows.map((row) => ({
+    const auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      },
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+    })
+
+    const sheets = google.sheets({ version: 'v4', auth })
+
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId: process.env.GOOGLE_SHEET_ID,
+      range: 'STOCK!A:J', // SKU … Taglia
+    })
+
+    const rows = response.data.values
+    if (!rows || rows.length < 2) {
+      return NextResponse.json({ items: [] })
+    }
+
+    // Skip header row (index 0)
+    const items = rows.slice(1).map((row) => ({
       sku: row[0] || '',
       numeroOrdine: row[1] || '',
       dataOrdine: row[2] || '',
-      prezzoAcquisto: parseFloat(row[3]) || 0,
+      prezzoAcquisto: row[3] || '',
       scadenzaReso: row[4] || '',
-      giorniRimanenti: parseInt(row[5]) || 0,
+      giorniRimanenti: row[5] !== '' && row[5] !== undefined ? Number(row[5]) : null,
       statoScadenza: row[6] || '',
       esito: row[7] || '',
       idModello: row[8] || '',
       taglia: row[9] || '',
     }))
-    return NextResponse.json(capi)
+
+    return NextResponse.json({ items })
   } catch (error) {
-    return NextResponse.json({ error: 'Errore lettura stock' }, { status: 500 })
+    console.error('Google Sheets error:', error)
+    return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 })
   }
 }
 
-export async function PATCH(request: Request) {
-  try {
-    const { sku, field, value } = await request.json()
-    const rows = await readSheet('STOCK!A2:J')
-    const rowIndex = rows.findIndex((row) => row[0] === sku)
-    if (rowIndex === -1) {
-      return NextResponse.json({ error: 'SKU non trovato' }, { status: 404 })
-    }
-    const fieldMap: { [key: string]: number } = {
-      sku: 0,
-      numeroOrdine: 1,
-      dataOrdine: 2,
-      prezzoAcquisto: 3,
-      esito: 7,
-      idModello: 8,
-      taglia: 9,
-    }
-    const colIndex = fieldMap[field]
-    if (colIndex === undefined) {
-      return NextResponse.json({ error: 'Campo non valido' }, { status: 400 })
-    }
-    const sheetRow = rowIndex + 2
-    const colLetter = String.fromCharCode(65 + colIndex)
-    await writeSheet(`STOCK!${colLetter}${sheetRow}`, [[value]])
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ error: 'Errore aggiornamento' }, { status: 500 })
-  }
+type NuovoStockBody = {
+  sku: string
+  numeroOrdine: string
+  dataOrdine: string
+  prezzoAcquisto: string
+  idModello: string
+  taglia: string
 }
 
 export async function POST(request: Request) {
   try {
-    const capo: CapoStock = await request.json()
-    await readSheet('STOCK!A2:J')
-    const newRow = [
-      capo.sku,
-      capo.numeroOrdine,
-      capo.dataOrdine,
-      capo.prezzoAcquisto,
-      '',
-      '',
-      '',
-      'In stock',
-      capo.idModello,
-      capo.taglia,
-    ]
-    const rows = await readSheet('STOCK!A2:A')
-    const nextRow = rows.length + 2
-    await writeSheet(`STOCK!A${nextRow}:J${nextRow}`, [newRow])
+    const body = (await request.json()) as NuovoStockBody
+    const sku = String(body.sku ?? '').trim()
+    const numeroOrdine = String(body.numeroOrdine ?? '').trim()
+    const dataOrdine = String(body.dataOrdine ?? '').trim()
+    const prezzoAcquisto = String(body.prezzoAcquisto ?? '').trim()
+    const idModello = String(body.idModello ?? '').trim()
+    const taglia = String(body.taglia ?? '').trim()
+
+    if (!sku || !numeroOrdine || !dataOrdine || !prezzoAcquisto || !idModello || !taglia) {
+      return NextResponse.json({ error: 'Compila tutti i campi obbligatori' }, { status: 400 })
+    }
+
+    const existing = await readSheet('STOCK!A2:A5000')
+    const taken = existing.some(
+      (r) => String(r[0] ?? '').trim().toLowerCase() === sku.toLowerCase()
+    )
+    if (taken) {
+      return NextResponse.json({ error: 'SKU già presente nello stock' }, { status: 400 })
+    }
+
+    const nextRow = await nextRowAfterLastSku('STOCK', 'A', 2, 8000)
+
+    // Scrivi A-D (SKU, N.Ordine, Data, Prezzo) — NON toccare E, F, G (formule)
+    await writeSheet(`STOCK!A${nextRow}:D${nextRow}`, [
+      [sku, numeroOrdine, dataOrdine, prezzoAcquisto],
+    ])
+
+    // Scrivi H-J (Esito, ID Modello, Taglia) separatamente
+    await writeSheet(`STOCK!H${nextRow}:J${nextRow}`, [
+      ['In stock', idModello, taglia],
+    ])
+
     return NextResponse.json({ success: true })
   } catch (error) {
-    return NextResponse.json({ error: 'Errore inserimento' }, { status: 500 })
+    console.error('POST /api/stock:', error)
+    return NextResponse.json({ error: 'Errore creazione riga stock' }, { status: 500 })
   }
 }

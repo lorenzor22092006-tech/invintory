@@ -13,14 +13,15 @@ export interface CapoStock {
   
   export interface Vendita {
     sku: string
-    prezzoVendita: number
-    dataVendita: string
-    venditore: string
-    numeroOrdine: string
-    dataOrdine: string
-    prezzoAcquisto: number
     idModello: string
     taglia: string
+    dataVendita: string
+    prezzoAcquisto: number
+    prezzoVendita: number
+    guadagnoLordo: number
+    venditore: string
+    fee: number
+    guadagnoNetto: number
   }
   
   export interface ModelloTaglie {
@@ -31,7 +32,10 @@ export interface CapoStock {
     stockS: number
     stockM: number
     stockL: number
-    arrivi: number
+    arrivoXS: number
+    arrivoS: number
+    arrivoM: number
+    arrivoL: number
     skuXS: string
     skuS: string
     skuM: string
@@ -48,6 +52,11 @@ export interface CapoStock {
     totaleVenduti: number
     totaleResi: number
     scadenzeImminenti: number
+    scaduti: number
     fatturato: number
+    costoAcquisti: number
+    guadagnoLordo: number
+    feeTotali: number
     guadagnoNetto: number
+    rimanenze: number
   }
