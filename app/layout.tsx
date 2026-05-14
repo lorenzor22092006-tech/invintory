@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import VitoButton from "@/components/VitoButton";
 
 export const metadata: Metadata = {
   title: "Invintory",
@@ -19,6 +20,7 @@ export default function RootLayout({
           {children}
         </main>
         <BottomNav />
+        <VitoButton />
       </body>
     </html>
   );
