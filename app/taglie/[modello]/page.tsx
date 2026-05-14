@@ -202,7 +202,7 @@ export default function ModelloPage() {
         <div style={{ width: 110, height: 110, borderRadius: 16, background: '#102A24', border: '1.5px solid #1B3A34', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {item.fotoUrl ? (
             <img
-              src={item.fotoUrl}
+              src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
               alt={item.idModello}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}

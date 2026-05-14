@@ -1,227 +1,526 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Vendita } from '@/lib/types'
 
-function VenditePage() {
-  const [vendite, setVendite] = useState<Vendita[]>([])
-  const [search, setSearch] = useState('')
+type VenditaExt = Vendita & { dataISO: string }
+
+function parseDataISO(data: string): string {
+  const p = data.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return p ? `${p[3]}-${p[2]}-${p[1]}` : data
+}
+
+function euro(n: number): string {
+  return '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+export default function VenditePage() {
+  const [vendite, setVendite] = useState<VenditaExt[]>([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
   const [venditori, setVenditori] = useState<string[]>([])
-  const [form, setForm] = useState({
-    sku: '',
-    prezzoVendita: '',
-    dataVendita: new Date().toISOString().split('T')[0],
-    venditore: '',
-  })
-  const [messaggio, setMessaggio] = useState('')
-  const [errore, setErrore] = useState('')
-  const searchParams = useSearchParams()
+
+  const [editTarget, setEditTarget] = useState<VenditaExt | null>(null)
+  const [editForm, setEditForm] = useState({ prezzoVendita: '', dataVendita: '', venditore: '' })
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   useEffect(() => {
-    caricaVendite()
+    loadVendite()
     fetch('/api/config')
       .then((r) => r.json())
       .then((data) => {
-        const nomi = data.venditori
-          .map((v: any) => v.nome)
-          .filter((n: string) => n)
-        setVenditori(nomi)
+        setVenditori(data.venditori?.map((v: { nome: string }) => v.nome).filter(Boolean) || [])
       })
-    const skuParam = searchParams.get('sku')
-    const nuovoParam = searchParams.get('nuovo')
-    if (skuParam) {
-      setForm((f) => ({ ...f, sku: skuParam }))
-      setShowForm(true)
-    }
-    if (nuovoParam) setShowForm(true)
+      .catch(() => {})
   }, [])
 
-  function caricaVendite() {
+  function loadVendite() {
+    setLoading(true)
     fetch('/api/vendite')
       .then((r) => r.json())
-      .then((data) => {
-        setVendite(data)
+      .then((data: Vendita[]) => {
+        const ext: VenditaExt[] = (Array.isArray(data) ? data : []).map((v) => ({
+          ...v,
+          dataISO: parseDataISO(v.dataVendita),
+        }))
+        ext.sort((a, b) => b.dataISO.localeCompare(a.dataISO))
+        setVendite(ext)
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }
 
-  const venditeFilrate = vendite.filter((v) =>
-    v.sku.toLowerCase().includes(search.toLowerCase())
+  function openEdit(v: VenditaExt) {
+    setEditTarget(v)
+    setEditForm({
+      prezzoVendita: String(v.prezzoVendita),
+      dataVendita: v.dataISO,
+      venditore: v.venditore || '',
+    })
+    setSaveError(null)
+  }
+
+  function closeEdit() {
+    setEditTarget(null)
+    setSaveError(null)
+  }
+
+  async function saveEdit() {
+    if (!editTarget) return
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch('/api/vendite', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sku: editTarget.sku,
+          prezzoVendita: parseFloat(editForm.prezzoVendita.replace(',', '.')) || 0,
+          dataVendita: editForm.dataVendita,
+          venditore: editForm.venditore,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSaveError(data.error || 'Errore durante il salvataggio')
+        setSaving(false)
+        return
+      }
+      closeEdit()
+      loadVendite()
+    } catch {
+      setSaveError('Errore di rete. Riprova.')
+      setSaving(false)
+    }
+  }
+
+  const filtered = vendite.filter(
+    (v) =>
+      v.sku.toLowerCase().includes(search.toLowerCase()) ||
+      v.idModello.toLowerCase().includes(search.toLowerCase()) ||
+      (v.venditore || '').toLowerCase().includes(search.toLowerCase())
   )
 
-  async function registraVendita() {
-    setErrore('')
-    setMessaggio('')
-    if (!form.sku || !form.prezzoVendita || !form.dataVendita) {
-      setErrore('Compila SKU, prezzo e data')
-      return
-    }
-    const res = await fetch('/api/vendite', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sku: form.sku,
-        prezzoVendita: parseFloat(form.prezzoVendita),
-        dataVendita: form.dataVendita,
-        venditore: form.venditore,
-      }),
-    })
-    const data = await res.json()
-    if (data.success) {
-      setMessaggio('Vendita registrata con successo!')
-      setShowForm(false)
-      setForm({
-        sku: '',
-        prezzoVendita: '',
-        dataVendita: new Date().toISOString().split('T')[0],
-        venditore: '',
-      })
-      caricaVendite()
-    } else {
-      setErrore(data.error || 'Errore durante la registrazione')
-    }
-  }
-
-  function euro(n: number) {
-    return '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2 })
-  }
-
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Vendite</h1>
-        <button
-          onClick={() => { setShowForm(!showForm); setErrore(''); setMessaggio('') }}
-          className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm"
+    <div
+      style={{
+        minHeight: '100dvh',
+        background: '#061311',
+        display: 'flex',
+        flexDirection: 'column',
+        maxWidth: 430,
+        margin: '0 auto',
+        paddingBottom: 90,
+      }}
+    >
+      {/* HEADER */}
+      <div style={{ padding: '52px 20px 16px' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', margin: '0 0 16px' }}>
+          Vendite
+        </h1>
+
+        {/* SEARCH */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: '#0B1F1A',
+            border: '1.5px solid #1B3A34',
+            borderRadius: 14,
+            padding: '0 16px',
+            gap: 10,
+          }}
         >
-          + Nuova vendita
-        </button>
-      </div>
-
-      {messaggio && (
-        <div className="bg-green-50 text-green-700 text-sm px-4 py-2 rounded-lg mb-4">
-          {messaggio}
-        </div>
-      )}
-
-      {showForm && (
-        <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6">
-          <h2 className="font-medium text-gray-900 mb-4">Registra vendita</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">SKU *</label>
-              <input
-                type="text"
-                value={form.sku}
-                onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                placeholder="es. 42"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400 font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Prezzo vendita (€) *</label>
-              <input
-                type="number"
-                value={form.prezzoVendita}
-                onChange={(e) => setForm({ ...form, prezzoVendita: e.target.value })}
-                placeholder="es. 35.00"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Data vendita *</label>
-              <input
-                type="date"
-                value={form.dataVendita}
-                onChange={(e) => setForm({ ...form, dataVendita: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Venditore (opzionale)</label>
-              <select
-                value={form.venditore}
-                onChange={(e) => setForm({ ...form, venditore: e.target.value })}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-              >
-                <option value="">Nessuno</option>
-                {venditori.map((v, i) => (
-                  <option key={i} value={v}>{v}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {errore && (
-            <p className="text-sm mt-3 text-red-500">{errore}</p>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="#64748B" strokeWidth="2" />
+            <path d="M20 20l-3-3" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Cerca SKU, modello, venditore..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              flex: 1,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: '#F8FAFC',
+              fontSize: 15,
+              padding: '13px 0',
+            }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748B',
+                cursor: 'pointer',
+                fontSize: 18,
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
           )}
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={registraVendita}
-              className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-sm"
-            >
-              Registra
-            </button>
-            <button
-              onClick={() => { setShowForm(false); setErrore('') }}
-              className="flex-1 border border-gray-200 py-2 rounded-lg text-sm text-gray-700"
-            >
-              Annulla
-            </button>
-          </div>
         </div>
-      )}
-
-      <div className="flex gap-2 mb-4">
-        <input
-          type="text"
-          placeholder="Cerca vendita per SKU..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none focus:border-gray-400"
-        />
       </div>
 
-      {loading ? (
-        <p className="text-sm text-gray-400">Caricamento...</p>
-      ) : venditeFilrate.length === 0 ? (
-        <p className="text-sm text-gray-400">Nessuna vendita trovata</p>
-      ) : (
-        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium uppercase tracking-wide">SKU</th>
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium uppercase tracking-wide">Modello</th>
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium uppercase tracking-wide">Prezzo</th>
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium uppercase tracking-wide">Netto</th>
-                <th className="text-left px-4 py-3 text-xs text-gray-500 font-medium uppercase tracking-wide">Data</th>
-              </tr>
-            </thead>
-            <tbody>
-              {venditeFilrate.map((v, i) => (
-                <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs">{v.sku}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{v.idModello || '—'}</td>
-                  <td className="px-4 py-3">{euro(v.prezzoVendita)}</td>
-                  <td className="px-4 py-3 text-green-600">{euro(v.guadagnoNetto)}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{v.dataVendita}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* LIST */}
+      <div style={{ padding: '0 20px' }}>
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                style={{ height: 94, borderRadius: 14, background: '#0B1F1A', opacity: 0.5 }}
+              />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '48px 20px',
+              color: '#64748B',
+              fontSize: 14,
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🛍️</div>
+            {search ? 'Nessuna vendita trovata' : 'Nessuna vendita registrata'}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map((v, i) => (
+              <div
+                key={i}
+                onClick={() => openEdit(v)}
+                style={{
+                  background: '#0B1F1A',
+                  border: '1.5px solid #1B3A34',
+                  borderRadius: 14,
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                }}
+              >
+                {/* Riga 1: SKU badge + taglia + data + freccia */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <span
+                      style={{
+                        background: 'rgba(16,185,129,0.12)',
+                        border: '1px solid #10B981',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: '#10B981',
+                      }}
+                    >
+                      {v.sku}
+                    </span>
+                    {v.taglia && (
+                      <span
+                        style={{
+                          background: '#102A24',
+                          border: '1px solid #1B3A34',
+                          borderRadius: 6,
+                          padding: '2px 8px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: '#94A3B8',
+                        }}
+                      >
+                        {v.taglia}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>{v.dataVendita}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M9 18l6-6-6-6"
+                        stroke="#1B3A34"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Riga 2: ID Modello */}
+                <div
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 700,
+                    color: '#F8FAFC',
+                    marginBottom: 8,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {v.idModello || '—'}
+                </div>
+
+                {/* Riga 3: prezzi + venditore */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: '#10B981' }}>
+                      {euro(v.prezzoVendita)}
+                    </span>
+                    <span style={{ fontSize: 12, color: '#64748B' }}>
+                      netto {euro(v.guadagnoNetto)}
+                    </span>
+                  </div>
+                  {v.venditore && (
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: '#94A3B8',
+                        background: '#102A24',
+                        borderRadius: 6,
+                        padding: '2px 8px',
+                      }}
+                    >
+                      {v.venditore}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* EDIT BOTTOM SHEET */}
+      {editTarget && (
+        <>
+          <div
+            onClick={closeEdit}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.65)',
+              zIndex: 50,
+            }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: 0,
+              width: '100%',
+              maxWidth: 430,
+              zIndex: 51,
+              background: '#0B1F1A',
+              borderRadius: '20px 20px 0 0',
+              border: '1.5px solid #1B3A34',
+              borderBottom: 'none',
+              padding: '20px 20px 44px',
+            }}
+          >
+            {/* Handle */}
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                background: '#1B3A34',
+                borderRadius: 2,
+                margin: '0 auto 20px',
+              }}
+            />
+
+            {/* Titolo */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC' }}>
+                Modifica vendita
+              </div>
+              <div style={{ fontSize: 13, color: '#64748B', marginTop: 3 }}>
+                {editTarget.idModello || editTarget.sku} — SKU {editTarget.sku}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Prezzo vendita */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#94A3B8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Prezzo vendita (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.prezzoVendita}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, prezzoVendita: e.target.value }))
+                  }
+                  style={{
+                    background: '#102A24',
+                    border: '1.5px solid #1B3A34',
+                    borderRadius: 12,
+                    padding: '12px 14px',
+                    color: '#F8FAFC',
+                    fontSize: 15,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {/* Data vendita */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#94A3B8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Data vendita
+                </label>
+                <input
+                  type="date"
+                  value={editForm.dataVendita}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, dataVendita: e.target.value }))
+                  }
+                  style={{
+                    background: '#102A24',
+                    border: '1.5px solid #1B3A34',
+                    borderRadius: 12,
+                    padding: '12px 14px',
+                    color: '#F8FAFC',
+                    fontSize: 15,
+                    outline: 'none',
+                    colorScheme: 'dark',
+                  }}
+                />
+              </div>
+
+              {/* Venditore */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#94A3B8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Venditore
+                </label>
+                <select
+                  value={editForm.venditore}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, venditore: e.target.value }))
+                  }
+                  style={{
+                    background: '#102A24',
+                    border: '1.5px solid #1B3A34',
+                    borderRadius: 12,
+                    padding: '12px 14px',
+                    color: editForm.venditore ? '#F8FAFC' : '#64748B',
+                    fontSize: 15,
+                    outline: 'none',
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                  }}
+                >
+                  <option value="">Nessuno</option>
+                  {venditori.map((nome, i) => (
+                    <option key={i} value={nome}>
+                      {nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {saveError && (
+              <div
+                style={{
+                  marginTop: 14,
+                  background: 'rgba(239,68,68,0.10)',
+                  border: '1.5px solid #EF4444',
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  color: '#EF4444',
+                  fontSize: 14,
+                }}
+              >
+                {saveError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button
+                onClick={closeEdit}
+                style={{
+                  flex: 1,
+                  background: '#102A24',
+                  border: '1.5px solid #1B3A34',
+                  borderRadius: 14,
+                  color: '#F8FAFC',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  padding: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  background: saving ? '#065F46' : '#10B981',
+                  border: 'none',
+                  borderRadius: 14,
+                  color: 'white',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  padding: '14px',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 16px rgba(16,185,129,0.25)',
+                  opacity: saving ? 0.7 : 1,
+                }}
+              >
+                {saving ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
-  )
-}
-
-export default function Vendite() {
-  return (
-    <Suspense>
-      <VenditePage />
-    </Suspense>
   )
 }

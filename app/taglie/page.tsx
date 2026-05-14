@@ -11,6 +11,10 @@ interface ModelloItem {
   sStock: number
   mStock: number
   lStock: number
+  skuXS: string
+  skuS: string
+  skuM: string
+  skuL: string
 }
 
 export default function TagliePage() {
@@ -33,7 +37,13 @@ export default function TagliePage() {
   }, [])
 
   const filtered = items.filter((item) => {
-    const matchSearch = item.idModello.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const matchSearch =
+      q === '' ||
+      item.idModello.toLowerCase().includes(q) ||
+      [item.skuXS, item.skuS, item.skuM, item.skuL].some((skuList) =>
+        skuList.toLowerCase().includes(q)
+      )
     const matchCat = categoriaAttiva === 'Tutte' || item.categoria === categoriaAttiva
     return matchSearch && matchCat
   })
@@ -246,7 +256,7 @@ export default function TagliePage() {
                   >
                     {item.fotoUrl ? (
                       <img
-                        src={item.fotoUrl}
+                        src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
                         alt={item.idModello}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {

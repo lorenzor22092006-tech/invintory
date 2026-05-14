@@ -125,3 +125,73 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Errore registrazione vendita' }, { status: 500 })
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const sku = String(body.sku ?? '').trim()
+    if (!sku) return NextResponse.json({ error: 'SKU obbligatorio' }, { status: 400 })
+
+    const rows = await readSheet(`VENDITE!A${VENDITE_DATA_START}:K${VENDITE_DATA_END}`)
+    const rowIndex = rows.findIndex(
+      (r) => String(r[0] ?? '').trim().toLowerCase() === sku.toLowerCase()
+    )
+    if (rowIndex === -1) {
+      return NextResponse.json({ error: 'Vendita non trovata' }, { status: 404 })
+    }
+
+    const sheetRow = rowIndex + VENDITE_DATA_START
+    const parsed = parseVenditeFixedRow(rows[rowIndex].map((c) => String(c ?? '')))
+
+    const prezzoAcquisto = parseEuro(parsed.prezzoAcquisto)
+    const finalPrezzoVendita =
+      body.prezzoVendita !== undefined
+        ? parseFloat(String(body.prezzoVendita).replace(',', '.')) || 0
+        : parseEuro(parsed.prezzoVendita)
+    const finalVenditore =
+      body.venditore !== undefined ? String(body.venditore).trim() : parsed.venditore
+
+    let finalDataVendita = parsed.dataVendita
+    if (body.dataVendita) {
+      const iso = String(body.dataVendita).match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      finalDataVendita = iso
+        ? `${iso[3]}/${iso[2]}/${iso[1]}`
+        : String(body.dataVendita)
+    }
+
+    let feePerc = 0
+    if (finalVenditore) {
+      const configRows = await readSheet('CONFIG!A2:B')
+      const venditoreDati = configRows.find(
+        (r) => String(r[0] ?? '').trim() === finalVenditore
+      )
+      feePerc = venditoreDati
+        ? parseFloat(String(venditoreDati[1]).replace('%', '')) || 0
+        : 0
+    }
+
+    const guadagnoLordo = finalPrezzoVendita - prezzoAcquisto
+    const feeEuro = (finalPrezzoVendita * feePerc) / 100
+    const guadagnoNetto = guadagnoLordo - feeEuro
+
+    const updatedRow = buildVenditeFixedRow({
+      sku: parsed.sku,
+      idModello: parsed.idModello,
+      taglia: parsed.taglia,
+      dataVendita: finalDataVendita,
+      prezzoAcquisto,
+      prezzoVendita: finalPrezzoVendita,
+      guadagnoLordo,
+      venditore: finalVenditore,
+      fee: feeEuro,
+      guadagnoNetto,
+    })
+
+    await writeSheet(`VENDITE!A${sheetRow}:K${sheetRow}`, [updatedRow])
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('PATCH /api/vendite:', error)
+    return NextResponse.json({ error: 'Errore modifica vendita' }, { status: 500 })
+  }
+}
