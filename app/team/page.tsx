@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+const ADMIN_PASSWORD = 'TESTAdiminchia1$'
+
 interface Venditore {
   nome: string
   feePercentuale: number
@@ -146,6 +148,12 @@ export default function TeamPage() {
   // form categoria
   const [fCat, setFCat] = useState('')
 
+  // password gate
+  const [pendingAction, setPendingAction] = useState<Sheet>(null)
+  const [pwInput, setPwInput] = useState('')
+  const [pwError, setPwError] = useState<string | null>(null)
+  const [pwVisible, setPwVisible] = useState(false)
+
   function load() {
     setLoading(true)
     fetch('/api/config')
@@ -177,6 +185,25 @@ export default function TeamPage() {
       setFCat('')
     }
     setSheet(s)
+  }
+
+  function requirePassword(action: Sheet) {
+    setPendingAction(action)
+    setPwInput('')
+    setPwError(null)
+    setPwVisible(false)
+  }
+
+  function confirmPassword() {
+    if (pwInput === ADMIN_PASSWORD) {
+      const action = pendingAction
+      setPendingAction(null)
+      setPwInput('')
+      setPwError(null)
+      openSheet(action)
+    } else {
+      setPwError('Password errata')
+    }
   }
 
   function closeSheet() {
@@ -303,7 +330,7 @@ export default function TeamPage() {
               </div>
             </div>
             <button
-              onClick={() => openSheet({ tipo: 'add-venditore' })}
+              onClick={() => requirePassword({ tipo: 'add-venditore' })}
               style={{
                 width: 36,
                 height: 36,
@@ -396,7 +423,7 @@ export default function TeamPage() {
 
                   {/* Modifica */}
                   <button
-                    onClick={() => openSheet({ tipo: 'edit-venditore', venditore: v })}
+                    onClick={() => requirePassword({ tipo: 'edit-venditore', venditore: v })}
                     style={{
                       width: 34,
                       height: 34,
@@ -418,7 +445,7 @@ export default function TeamPage() {
 
                   {/* Elimina */}
                   <button
-                    onClick={() => openSheet({ tipo: 'delete-venditore', nome: v.nome })}
+                    onClick={() => requirePassword({ tipo: 'delete-venditore', nome: v.nome })}
                     style={{
                       width: 34,
                       height: 34,
@@ -674,6 +701,143 @@ export default function TeamPage() {
             </button>
           </div>
         </SheetOverlay>
+      )}
+
+      {/* ── PASSWORD GATE (solo per azioni venditori) ───────────────────── */}
+      {pendingAction !== null && (
+        <>
+          <div
+            onClick={() => { setPendingAction(null); setPwInput(''); setPwError(null) }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50 }}
+          />
+          <div
+            style={{
+              position: 'fixed',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: 0,
+              width: '100%',
+              maxWidth: 430,
+              zIndex: 51,
+              background: '#0B1F1A',
+              borderRadius: '20px 20px 0 0',
+              border: '1.5px solid #1B3A34',
+              borderBottom: 'none',
+              padding: '20px 20px 44px',
+            }}
+          >
+            <div style={{ width: 40, height: 4, background: '#1B3A34', borderRadius: 2, margin: '0 auto 20px' }} />
+
+            {/* Icona lucchetto */}
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 16,
+                  background: 'rgba(16,185,129,0.12)',
+                  border: '1.5px solid #1B3A34',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="11" width="18" height="11" rx="2" stroke="#10B981" strokeWidth="2" />
+                  <path d="M7 11V7a5 5 0 0110 0v4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="12" cy="16" r="1.5" fill="#10B981" />
+                </svg>
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC' }}>Accesso richiesto</div>
+              <div style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>
+                Inserisci la password admin per continuare
+              </div>
+            </div>
+
+            {/* Campo password */}
+            <div style={{ position: 'relative', marginTop: 16 }}>
+              <input
+                type={pwVisible ? 'text' : 'password'}
+                value={pwInput}
+                onChange={(e) => { setPwInput(e.target.value); setPwError(null) }}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmPassword() }}
+                placeholder="Password"
+                autoFocus
+                style={{
+                  background: '#102A24',
+                  border: `1.5px solid ${pwError ? '#EF4444' : '#1B3A34'}`,
+                  borderRadius: 12,
+                  padding: '12px 48px 12px 14px',
+                  color: '#F8FAFC',
+                  fontSize: 15,
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {/* Toggle visibilità */}
+              <button
+                onClick={() => setPwVisible((v) => !v)}
+                style={{
+                  position: 'absolute',
+                  right: 12,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                {pwVisible ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            {pwError && (
+              <div
+                style={{
+                  background: 'rgba(239,68,68,0.10)',
+                  border: '1.5px solid #EF4444',
+                  borderRadius: 12,
+                  padding: '10px 14px',
+                  color: '#EF4444',
+                  fontSize: 14,
+                  marginTop: 10,
+                }}
+              >
+                {pwError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button
+                onClick={() => { setPendingAction(null); setPwInput(''); setPwError(null) }}
+                style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer' }}
+              >
+                Annulla
+              </button>
+              <button
+                onClick={confirmPassword}
+                style={{ flex: 1, background: '#10B981', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.25)' }}
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* ── BOTTOM SHEET: conferma elimina categoria ────────────────────── */}
