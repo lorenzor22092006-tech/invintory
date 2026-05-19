@@ -36,6 +36,10 @@ export default function ModelloPage() {
   const [deleting, setDeleting] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [confirmDone, setConfirmDone] = useState(false)
+  const [editingFoto, setEditingFoto] = useState(false)
+  const [fotoUrlEdit, setFotoUrlEdit] = useState('')
+  const [savingFoto, setSavingFoto] = useState(false)
+  const [fotoSaved, setFotoSaved] = useState(false)
 
   useEffect(() => {
     fetch('/api/taglie')
@@ -54,6 +58,30 @@ export default function ModelloPage() {
       })
       .catch(() => setLoading(false))
   }, [modelloId])
+
+  async function handleSalvaFoto() {
+    setSavingFoto(true)
+    try {
+      const res = await fetch(`/api/taglie/${encodeURIComponent(modelloId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fotoUrl: fotoUrlEdit }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Errore durante il salvataggio')
+        setSavingFoto(false)
+        return
+      }
+      setItem((prev) => prev ? { ...prev, fotoUrl: fotoUrlEdit } : prev)
+      setEditingFoto(false)
+      setFotoSaved(true)
+      setTimeout(() => setFotoSaved(false), 2000)
+    } catch {
+      alert('Errore di rete. Riprova.')
+    }
+    setSavingFoto(false)
+  }
 
   async function handleConferma() {
     setConfirming(true)
@@ -275,6 +303,122 @@ export default function ModelloPage() {
             </div>
           )
         })}
+      </div>
+
+      {/* MODIFICA FOTO URL */}
+      <div style={{ padding: '24px 20px 0' }}>
+        <div style={{
+          background: '#0B1F1A',
+          border: '1.5px solid #1B3A34',
+          borderRadius: 16,
+          padding: '16px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editingFoto ? 12 : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke="#64748B" strokeWidth="1.5" />
+                <circle cx="8.5" cy="8.5" r="1.5" fill="#64748B" />
+                <path d="M21 15l-5-5L5 21" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                URL Foto
+              </span>
+              {fotoSaved && (
+                <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600 }}>Salvata!</span>
+              )}
+            </div>
+            {!editingFoto && (
+              <button
+                onClick={() => {
+                  setFotoUrlEdit(item.fotoUrl || '')
+                  setEditingFoto(true)
+                }}
+                style={{
+                  background: 'rgba(16,185,129,0.12)',
+                  border: '1px solid #10B981',
+                  borderRadius: 8,
+                  color: '#10B981',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  padding: '5px 12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Modifica
+              </button>
+            )}
+          </div>
+
+          {!editingFoto ? (
+            <div style={{
+              marginTop: 8,
+              fontSize: 13,
+              color: item.fotoUrl ? '#94A3B8' : '#64748B',
+              wordBreak: 'break-all',
+              lineHeight: 1.4,
+            }}>
+              {item.fotoUrl || 'Nessuna foto impostata'}
+            </div>
+          ) : (
+            <>
+              <input
+                type="url"
+                placeholder="https://..."
+                value={fotoUrlEdit}
+                onChange={(e) => setFotoUrlEdit(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: '#102A24',
+                  border: '1.5px solid #1B3A34',
+                  borderRadius: 12,
+                  color: '#F8FAFC',
+                  fontSize: 14,
+                  padding: '11px 14px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button
+                  onClick={() => setEditingFoto(false)}
+                  disabled={savingFoto}
+                  style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: '1.5px solid #1B3A34',
+                    borderRadius: 12,
+                    color: '#94A3B8',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    padding: '11px',
+                    cursor: savingFoto ? 'not-allowed' : 'pointer',
+                    opacity: savingFoto ? 0.5 : 1,
+                  }}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleSalvaFoto}
+                  disabled={savingFoto}
+                  style={{
+                    flex: 1,
+                    background: '#10B981',
+                    border: 'none',
+                    borderRadius: 12,
+                    color: 'white',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    padding: '11px',
+                    cursor: savingFoto ? 'not-allowed' : 'pointer',
+                    opacity: savingFoto ? 0.7 : 1,
+                  }}
+                >
+                  {savingFoto ? 'Salvo...' : 'Salva'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* BOTTONI CONFERMA / ELIMINA */}
