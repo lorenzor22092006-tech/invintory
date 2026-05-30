@@ -89,8 +89,8 @@ export async function POST(request: Request) {
       ? parseFloat(String(venditoreDati[1]).replace('%', '')) || 0
       : 0
     const prezzoAcquisto = parseEuro(capo[3])
-    const feeEuro = (prezzoVendita * feePerc) / 100
     const guadagnoLordo = prezzoVendita - prezzoAcquisto
+    const feeEuro = (guadagnoLordo * feePerc) / 100
     const guadagnoNetto = guadagnoLordo - feeEuro
 
     const row = buildVenditeFixedRow({
@@ -171,7 +171,7 @@ export async function PATCH(request: Request) {
     }
 
     const guadagnoLordo = finalPrezzoVendita - prezzoAcquisto
-    const feeEuro = (finalPrezzoVendita * feePerc) / 100
+    const feeEuro = (guadagnoLordo * feePerc) / 100
     const guadagnoNetto = guadagnoLordo - feeEuro
 
     const updatedRow = buildVenditeFixedRow({
