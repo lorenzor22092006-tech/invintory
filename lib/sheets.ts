@@ -44,3 +44,21 @@ export async function appendSheet(range: string, values: any[][]) {
     requestBody: { values },
   })
 }
+
+export async function ensureSheet(title: string, headers: string[]) {
+  const sheets = await getSheets()
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID })
+  const exists = meta.data.sheets?.some((s) => s.properties?.title === title)
+  if (!exists) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title } } }] },
+    })
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${title}!A1`,
+      valueInputOption: 'RAW',
+      requestBody: { values: [headers] },
+    })
+  }
+}
