@@ -510,6 +510,35 @@ export default function HomePage() {
         </button>
       </div>
 
+      {/* REGISTRA RESO */}
+      <div style={{ padding: '0 20px 36px' }}>
+        <button
+          onClick={() => router.push('/resi/nuovo')}
+          style={{
+            width: '100%',
+            background: '#0B1F1A',
+            border: '1.5px solid #1B3A34',
+            borderRadius: 16,
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M9 14l-4-4 4-4" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5 10h11a4 4 0 0 1 0 8h-1" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700 }}>Registra Reso</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 'auto' }}>
+            <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      </div>
+
       {/* PRODOTTI IN SCADENZA */}
       <div style={{ padding: '0 20px' }}>
         <div
