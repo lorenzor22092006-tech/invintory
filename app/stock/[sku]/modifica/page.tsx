@@ -16,7 +16,7 @@ interface StockItem {
   taglia: string
 }
 
-const esiti = ['In stock', 'Venduto', 'Reso'] as const
+const esiti = ['In stock', 'Venduto', 'Reso', 'Reso, ma in stock'] as const
 
 const triggerBase: React.CSSProperties = {
   width: '100%',

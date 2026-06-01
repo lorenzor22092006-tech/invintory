@@ -32,7 +32,7 @@ export async function GET() {
       dataOrdine: row[2] || '',
       prezzoAcquisto: row[3] || '',
       scadenzaReso: row[4] || '',
-      giorniRimanenti: row[5] !== '' && row[5] !== undefined ? Number(row[5]) : null,
+      giorniRimanenti: (() => { const g = Number(row[5]); return row[5] !== '' && row[5] !== undefined && !isNaN(g) ? g : null })(),
       statoScadenza: row[6] || '',
       esito: row[7] || '',
       idModello: row[8] || '',

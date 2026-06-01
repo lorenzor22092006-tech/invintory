@@ -60,8 +60,7 @@ function rowToItem(row: string[]) {
     dataOrdine: row[2] || '',
     prezzoAcquisto: row[3] || '',
     scadenzaReso: row[4] || '',
-    giorniRimanenti:
-      row[5] !== '' && row[5] !== undefined ? Number(row[5]) : null,
+    giorniRimanenti: (() => { const g = Number(row[5]); return row[5] !== '' && row[5] !== undefined && !isNaN(g) ? g : null })(),
     statoScadenza: row[6] || '',
     esito: row[7] || '',
     idModello: row[8] || '',
@@ -131,6 +130,10 @@ export async function PATCH(
     const newEsito = body.esito !== undefined ? String(body.esito).trim() : prevEsito
     if (prevEsito === 'Venduto' && newEsito === 'In stock') {
       await deleteVenditeRowsBySku(spreadsheetId, String(cur[0] ?? '').trim())
+    }
+    if (newEsito === 'Reso, ma in stock') {
+      next[3] = '0'
+      next[4] = ''
     }
 
     const row = found.sheetRow
