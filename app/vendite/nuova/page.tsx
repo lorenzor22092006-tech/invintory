@@ -70,7 +70,7 @@ export default function RegistraVenditaPage() {
           })
         )
         const inStock = items
-          .filter((it) => it.sku && it.esito === 'In stock')
+          .filter((it) => it.sku && (it.esito === 'In stock' || it.esito === 'Reso, ma in stock'))
           .sort((a, b) => a.sku.localeCompare(b.sku, 'it', { numeric: true }))
         setSkusInStock(inStock)
         const nomi = (cfg.venditori || [])

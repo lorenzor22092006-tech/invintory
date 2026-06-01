@@ -72,9 +72,9 @@ export async function POST(request: Request) {
     if (esito === 'Venduto') {
       return NextResponse.json({ error: 'Capo già venduto' }, { status: 400 })
     }
-    if (esito !== 'In stock') {
+    if (esito !== 'In stock' && esito !== 'Reso, ma in stock') {
       return NextResponse.json(
-        { error: 'Solo i prodotti "In stock" possono essere venduti' },
+        { error: 'Solo i prodotti in stock possono essere venduti' },
         { status: 400 }
       )
     }
