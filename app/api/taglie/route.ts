@@ -17,7 +17,8 @@ export async function GET() {
       const idModello = String(row[8] ?? '').trim().toUpperCase()
       const taglia = String(row[9] ?? '').trim().toUpperCase()
 
-      if (esito !== 'In stock' || !idModello || !sku) continue
+      if (esito !== 'In stock' && esito !== 'Reso, ma in stock') continue
+      if (!idModello || !sku) continue
 
       if (!stockIndex[idModello]) stockIndex[idModello] = {}
       if (!stockIndex[idModello][taglia]) stockIndex[idModello][taglia] = []
