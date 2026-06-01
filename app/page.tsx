@@ -22,7 +22,7 @@ export default function HomePage() {
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
   /** false = più giorni rimanenti prima (più lontano dalla scadenza); true = più urgenti prima */
-  const [sortUrgentFirst, setSortUrgentFirst] = useState(false)
+  const [sortUrgentFirst, setSortUrgentFirst] = useState(true)
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
 
