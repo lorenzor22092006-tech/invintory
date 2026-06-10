@@ -551,29 +551,16 @@ export default function HomePage() {
             marginBottom: 14,
           }}
         >
-          <h2
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: '#F8FAFC',
-              margin: 0,
-              flexShrink: 0,
-            }}
-          >
-            Prodotti in scadenza
-          </h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
-            <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>
-              {loading ? '...' : `${inScadenza.length} prodotti`}
-            </span>
+          {/* dropdown a sinistra */}
+          <div style={{ position: 'relative' }}>
             <button
               type="button"
               onClick={() => setSortMenuOpen((v) => !v)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: '#102A24', border: '1.5px solid #1B3A34',
-                borderRadius: 10, padding: '6px 10px', cursor: 'pointer', color: '#10B981',
-                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
+                borderRadius: 10, padding: '7px 12px', cursor: 'pointer', color: '#10B981',
+                fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
               }}
             >
               {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
@@ -581,24 +568,9 @@ export default function HomePage() {
                 <path d="M6 9l6 6 6-6" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
-            <button
-              type="button"
-              onClick={() => setSortAsc((v) => !v)}
-              style={{
-                width: 32, height: 32, borderRadius: '50%',
-                border: '1.5px solid #1B3A34', background: '#102A24',
-                color: '#10B981', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
             {sortMenuOpen && (
               <div style={{
-                position: 'absolute', top: '110%', right: 0, zIndex: 50,
+                position: 'absolute', top: '110%', left: 0, zIndex: 50,
                 background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12,
                 overflow: 'hidden', minWidth: 140, boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
               }}>
@@ -620,6 +592,28 @@ export default function HomePage() {
                 ))}
               </div>
             )}
+          </div>
+
+          {/* freccia + contatore a destra */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>
+              {loading ? '...' : `${inScadenza.length} prodotti`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSortAsc((v) => !v)}
+              style={{
+                width: 32, height: 32, borderRadius: '50%',
+                border: '1.5px solid #1B3A34', background: '#102A24',
+                color: '#10B981', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 
