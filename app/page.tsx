@@ -23,6 +23,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [sortMode, setSortMode] = useState<'scadenza' | 'sku'>('scadenza')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const [sortAsc, setSortAsc] = useState(true)
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
 
@@ -44,12 +45,12 @@ export default function HomePage() {
         item.giorniRimanenti >= 0
     )
     return [...filtered].sort((a, b) => {
-      if (sortMode === 'sku') {
-        return a.sku.localeCompare(b.sku, 'it', { numeric: true })
-      }
-      return (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0)
+      const cmp = sortMode === 'sku'
+        ? a.sku.localeCompare(b.sku, 'it', { numeric: true })
+        : (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0)
+      return sortAsc ? cmp : -cmp
     })
-  }, [items, sortMode])
+  }, [items, sortMode, sortAsc])
 
   useEffect(() => {
     if (!search.trim()) {
@@ -578,6 +579,21 @@ export default function HomePage() {
               {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path d="M6 9l6 6 6-6" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortAsc((v) => !v)}
+              style={{
+                width: 32, height: 32, borderRadius: '50%',
+                border: '1.5px solid #1B3A34', background: '#102A24',
+                color: '#10B981', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
             {sortMenuOpen && (
