@@ -21,8 +21,8 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
-  /** false = più giorni rimanenti prima (più lontano dalla scadenza); true = più urgenti prima */
-  const [sortUrgentFirst, setSortUrgentFirst] = useState(true)
+  const [sortMode, setSortMode] = useState<'scadenza' | 'sku'>('scadenza')
+  const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
 
@@ -43,13 +43,13 @@ export default function HomePage() {
         item.giorniRimanenti !== null &&
         item.giorniRimanenti >= 0
     )
-    const sorted = [...filtered].sort((a, b) => {
-      const ga = a.giorniRimanenti ?? 0
-      const gb = b.giorniRimanenti ?? 0
-      return sortUrgentFirst ? ga - gb : gb - ga
+    return [...filtered].sort((a, b) => {
+      if (sortMode === 'sku') {
+        return a.sku.localeCompare(b.sku, 'it', { numeric: true })
+      }
+      return (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0)
     })
-    return sorted
-  }, [items, sortUrgentFirst])
+  }, [items, sortMode])
 
   useEffect(() => {
     if (!search.trim()) {
@@ -561,58 +561,49 @@ export default function HomePage() {
           >
             Prodotti in scadenza
           </h2>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              flexShrink: 0,
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
             <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>
               {loading ? '...' : `${inScadenza.length} prodotti`}
             </span>
             <button
               type="button"
-              disabled={loading || inScadenza.length < 2}
-              onClick={() => setSortUrgentFirst((v) => !v)}
-              title={
-                sortUrgentFirst
-                  ? 'Ordine: più urgenti prima. Tocca per mostrare prima i più lontani.'
-                  : 'Ordine: più lontani prima. Tocca per mostrare prima i più urgenti.'
-              }
-              aria-label={
-                sortUrgentFirst
-                  ? 'Mostra prima i prodotti con più giorni alla scadenza'
-                  : 'Mostra prima i prodotti più vicini alla scadenza'
-              }
+              onClick={() => setSortMenuOpen((v) => !v)}
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                border: '1.5px solid #1B3A34',
-                background: '#102A24',
-                color: '#10B981',
-                cursor: loading || inScadenza.length < 2 ? 'default' : 'pointer',
-                opacity: loading || inScadenza.length < 2 ? 0.45 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                transform: sortUrgentFirst ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease',
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#102A24', border: '1.5px solid #1B3A34',
+                borderRadius: 10, padding: '6px 10px', cursor: 'pointer', color: '#10B981',
+                fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path
-                  d="M12 5v14M5 12l7-7 7 7"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M6 9l6 6 6-6" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
+            {sortMenuOpen && (
+              <div style={{
+                position: 'absolute', top: '110%', right: 0, zIndex: 50,
+                background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12,
+                overflow: 'hidden', minWidth: 140, boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+              }}>
+                {(['scadenza', 'sku'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => { setSortMode(mode); setSortMenuOpen(false) }}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '11px 14px',
+                      border: 'none', borderBottom: mode === 'scadenza' ? '1px solid #102A24' : 'none',
+                      background: sortMode === mode ? 'rgba(16,185,129,0.15)' : 'transparent',
+                      color: sortMode === mode ? '#10B981' : '#F8FAFC',
+                      fontSize: 13, fontWeight: sortMode === mode ? 700 : 400, cursor: 'pointer',
+                    }}
+                  >
+                    {mode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
