@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { readSheet } from '@/lib/sheets'
+import { supabase } from '@/lib/supabase'
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -19,7 +19,7 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: 'object',
         properties: {
-          sku: { type: 'string', description: 'Il codice SKU da cercare (es. 130, SKU-045, ecc.)' },
+          sku: { type: 'string', description: 'Il codice SKU da cercare' },
         },
         required: ['sku'],
       },
@@ -29,11 +29,11 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'leggi_taglie_modello',
-      description: "Vede tutte le taglie e gli SKU disponibili per un dato ID modello. Usalo per 'che taglie ho del modello X'.",
+      description: "Vede tutte le taglie e gli SKU disponibili per un dato ID modello.",
       parameters: {
         type: 'object',
         properties: {
-          idModello: { type: 'string', description: "L'ID del modello (es. DOUBLEJ, NIKE-AIR-1, ecc.)" },
+          idModello: { type: 'string', description: "L'ID del modello" },
         },
         required: ['idModello'],
       },
@@ -51,20 +51,14 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
     type: 'function',
     function: {
       name: 'registra_vendita',
-      description: "Registra la vendita di un prodotto: segna il prodotto come 'Venduto' e aggiunge la vendita al registro.",
+      description: "Registra la vendita di un prodotto.",
       parameters: {
         type: 'object',
         properties: {
-          sku: { type: 'string', description: 'Il codice SKU del prodotto venduto' },
-          prezzoVendita: { type: 'number', description: 'Il prezzo di vendita in euro (solo il numero, es. 30)' },
-          dataVendita: {
-            type: 'string',
-            description: "Data della vendita nel formato DD/MM/YYYY. Se l'utente dice 'oggi', usa la data di oggi iniettata nel system prompt.",
-          },
-          venditore: {
-            type: 'string',
-            description: 'Nome del venditore (stringa vuota se non specificato)',
-          },
+          sku: { type: 'string' },
+          prezzoVendita: { type: 'number' },
+          dataVendita: { type: 'string', description: 'Formato DD/MM/YYYY' },
+          venditore: { type: 'string' },
         },
         required: ['sku', 'prezzoVendita', 'dataVendita'],
       },
@@ -75,56 +69,48 @@ const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
 async function runTool(name: string, args: Record<string, unknown>, baseUrl: string): Promise<unknown> {
   switch (name) {
     case 'leggi_stock': {
-      const rows = await readSheet('STOCK!A2:J5000')
-      return rows
-        .filter((r) => String(r[7] ?? '').trim() === 'In stock' && String(r[0] ?? '').trim())
-        .map((r) => ({
-          sku: String(r[0] ?? ''),
-          prezzoAcquisto: String(r[3] ?? ''),
-          scadenzaReso: String(r[4] ?? ''),
-          giorniRimanenti: String(r[5] ?? ''),
-          idModello: String(r[8] ?? ''),
-          taglia: String(r[9] ?? ''),
-        }))
+      const { data } = await supabase
+        .from('stock')
+        .select('sku, prezzo_acquisto, scadenza_reso, id_modello, taglia')
+        .eq('esito', 'In stock')
+      return (data || []).map((r) => ({
+        sku: r.sku,
+        prezzoAcquisto: r.prezzo_acquisto,
+        scadenzaReso: r.scadenza_reso,
+        idModello: r.id_modello,
+        taglia: r.taglia,
+      }))
     }
     case 'cerca_sku': {
-      const rows = await readSheet('STOCK!A2:J5000')
-      const found = rows.find(
-        (r) => String(r[0] ?? '').trim().toLowerCase() === String(args.sku ?? '').trim().toLowerCase()
-      )
-      return found
+      const { data } = await supabase
+        .from('stock')
+        .select('*')
+        .eq('sku', String(args.sku ?? ''))
+        .maybeSingle()
+      return data
         ? {
-            sku: String(found[0] ?? ''),
-            dataOrdine: String(found[2] ?? ''),
-            prezzoAcquisto: String(found[3] ?? ''),
-            scadenzaReso: String(found[4] ?? ''),
-            giorniRimanenti: String(found[5] ?? ''),
-            esito: String(found[7] ?? ''),
-            idModello: String(found[8] ?? ''),
-            taglia: String(found[9] ?? ''),
+            sku: data.sku,
+            dataOrdine: data.data_ordine,
+            prezzoAcquisto: data.prezzo_acquisto,
+            scadenzaReso: data.scadenza_reso,
+            esito: data.esito,
+            idModello: data.id_modello,
+            taglia: data.taglia,
           }
         : { error: 'SKU non trovato' }
     }
     case 'leggi_taglie_modello': {
-      const rows = await readSheet('STOCK!A2:J5000')
-      const result = rows
-        .filter(
-          (r) =>
-            String(r[8] ?? '').trim().toUpperCase() === String(args.idModello ?? '').trim().toUpperCase() &&
-            String(r[0] ?? '').trim()
-        )
-        .map((r) => ({
-          sku: String(r[0] ?? ''),
-          taglia: String(r[9] ?? ''),
-          esito: String(r[7] ?? ''),
-        }))
-      return result.length > 0 ? result : { messaggio: 'Nessun prodotto trovato per questo modello' }
+      const { data } = await supabase
+        .from('stock')
+        .select('sku, taglia, esito')
+        .ilike('id_modello', String(args.idModello ?? ''))
+      return data && data.length > 0
+        ? data.map((r) => ({ sku: r.sku, taglia: r.taglia, esito: r.esito }))
+        : { messaggio: 'Nessun prodotto trovato per questo modello' }
     }
     case 'leggi_venditori': {
-      const rows = await readSheet('CONFIG!A2:B')
-      return rows
-        .filter((r) => String(r[0] ?? '').trim())
-        .map((r) => ({ nome: String(r[0] ?? ''), fee: String(r[1] ?? '') + '%' }))
+      const { data } = await supabase.from('config_venditori').select('*')
+      return (data || []).map((r) => ({ nome: r.nome, fee: `${r.fee_percentuale}%` }))
     }
     case 'registra_vendita': {
       const res = await fetch(`${baseUrl}/api/vendite`, {
@@ -193,7 +179,6 @@ Regole importanti:
       })),
     ]
 
-    // Agentic loop
     while (true) {
       const response = await client.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -210,7 +195,6 @@ Regole importanti:
         return NextResponse.json({ reply })
       }
 
-      // Esegui tutti i tool call in parallelo
       await Promise.all(
         choice.message.tool_calls.map(async (toolCall) => {
           let result: unknown

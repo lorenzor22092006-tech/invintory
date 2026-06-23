@@ -1,25 +1,22 @@
 import { NextResponse } from 'next/server'
-import { readSheet, appendSheet } from '@/lib/sheets'
+import { supabase } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    const [catalogRows, stockRows, configCatRows] = await Promise.all([
-      readSheet('TAGLIE_STOCK!A2:C5000'),
-      readSheet('STOCK!A2:J5000'),
-      readSheet('CONFIG!D2:D'),
+    const [{ data: catalogRows }, { data: stockRows }] = await Promise.all([
+      supabase.from('taglie_stock').select('*').order('id_modello'),
+      supabase
+        .from('stock')
+        .select('sku, esito, id_modello, taglia')
+        .in('esito', ['In stock', 'Reso, ma in stock']),
     ])
 
-    // Build index: idModello → taglia → SKU[]
     const stockIndex: Record<string, Record<string, string[]>> = {}
-    for (const row of stockRows) {
-      const sku = String(row[0] ?? '').trim()
-      const esito = String(row[7] ?? '').trim()
-      const idModello = String(row[8] ?? '').trim().toUpperCase()
-      const taglia = String(row[9] ?? '').trim().toUpperCase()
-
-      if (esito !== 'In stock' && esito !== 'Reso, ma in stock') continue
+    for (const row of stockRows || []) {
+      const sku = (row.sku || '').trim()
+      const idModello = (row.id_modello || '').trim().toUpperCase()
+      const taglia = (row.taglia || '').trim().toUpperCase()
       if (!idModello || !sku) continue
-
       if (!stockIndex[idModello]) stockIndex[idModello] = {}
       if (!stockIndex[idModello][taglia]) stockIndex[idModello][taglia] = []
       stockIndex[idModello][taglia].push(sku)
@@ -28,13 +25,12 @@ export async function GET() {
     const categorieSet = new Set<string>()
     const items = []
 
-    for (const row of catalogRows) {
-      const idModello = String(row[0] ?? '').trim()
+    for (const row of catalogRows || []) {
+      const idModello = (row.id_modello || '').trim()
       if (!idModello) continue
 
-      const categoria = String(row[1] ?? '').trim()
-      const fotoUrl = String(row[2] ?? '').trim()
-
+      const categoria = (row.categoria || '').trim()
+      const fotoUrl = (row.foto_url || '').trim()
       if (categoria) categorieSet.add(categoria)
 
       const modelloStock = stockIndex[idModello.toUpperCase()] || {}
@@ -58,10 +54,9 @@ export async function GET() {
       })
     }
 
-    // Merge categories from CONFIG so newly added ones appear immediately
-    for (const row of configCatRows) {
-      const cat = String(row[0] ?? '').trim()
-      if (cat) categorieSet.add(cat)
+    const { data: configCat } = await supabase.from('config_categorie').select('nome')
+    for (const row of configCat || []) {
+      if (row.nome) categorieSet.add(row.nome)
     }
 
     return NextResponse.json({
@@ -88,18 +83,21 @@ export async function POST(request: Request) {
       )
     }
 
-    const existing = await readSheet('TAGLIE_STOCK!A2:A5000')
-    const taken = existing.some(
-      (r) => String(r[0] ?? '').trim().toUpperCase() === idModello
-    )
-    if (taken) {
-      return NextResponse.json(
-        { error: 'Modello già presente nel catalogo' },
-        { status: 400 }
-      )
+    const { data: existing } = await supabase
+      .from('taglie_stock')
+      .select('id_modello')
+      .eq('id_modello', idModello)
+      .maybeSingle()
+
+    if (existing) {
+      return NextResponse.json({ error: 'Modello già presente nel catalogo' }, { status: 400 })
     }
 
-    await appendSheet('TAGLIE_STOCK!A:C', [[idModello, categoria, fotoUrl]])
+    const { error } = await supabase
+      .from('taglie_stock')
+      .insert({ id_modello: idModello, categoria, foto_url: fotoUrl })
+
+    if (error) throw error
 
     return NextResponse.json({ success: true })
   } catch (error) {

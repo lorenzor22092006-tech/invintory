@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readSheet, writeSheet } from '@/lib/sheets'
+import { supabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -10,30 +10,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Inserisci almeno uno SKU' }, { status: 400 })
     }
 
-    const stockRows = await readSheet('STOCK!A2:H')
-
     const risultati: { sku: string; ok: boolean; errore?: string }[] = []
 
     for (const sku of skus) {
-      const rowIndex = stockRows.findIndex(
-        (r) => String(r[0] ?? '').trim().toLowerCase() === sku.toLowerCase()
-      )
-      if (rowIndex === -1) {
+      const { data: capo, error } = await supabase
+        .from('stock')
+        .select('sku, esito')
+        .eq('sku', sku)
+        .maybeSingle()
+
+      if (error || !capo) {
         risultati.push({ sku, ok: false, errore: 'SKU non trovato' })
         continue
       }
-      const esito = String(stockRows[rowIndex][7] ?? '').trim()
-      if (esito === 'Reso') {
+      if (capo.esito === 'Reso') {
         risultati.push({ sku, ok: false, errore: 'Già segnato come reso' })
         continue
       }
-      if (esito === 'Venduto') {
+      if (capo.esito === 'Venduto') {
         risultati.push({ sku, ok: false, errore: 'Capo già venduto' })
         continue
       }
-      const sheetRow = rowIndex + 2
-      await writeSheet(`STOCK!H${sheetRow}`, [['Reso']])
-      risultati.push({ sku, ok: true })
+
+      const { error: updateError } = await supabase
+        .from('stock')
+        .update({ esito: 'Reso' })
+        .eq('sku', sku)
+
+      if (updateError) {
+        risultati.push({ sku, ok: false, errore: 'Errore aggiornamento' })
+      } else {
+        risultati.push({ sku, ok: true })
+      }
     }
 
     const errori = risultati.filter((r) => !r.ok)

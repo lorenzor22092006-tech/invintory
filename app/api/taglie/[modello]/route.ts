@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { readSheet, writeSheet } from '@/lib/sheets'
+import { supabase } from '@/lib/supabase'
 
 export async function PATCH(
   req: Request,
@@ -11,21 +11,22 @@ export async function PATCH(
     const body = await req.json()
     const fotoUrl = String(body.fotoUrl ?? '').trim()
 
-    const rows = await readSheet('TAGLIE_STOCK!A2:C5000')
-    const rowIndex = rows.findIndex(
-      (r) => String(r[0] ?? '').trim().toUpperCase() === modelloId
-    )
+    const { data: existing } = await supabase
+      .from('taglie_stock')
+      .select('id_modello')
+      .eq('id_modello', modelloId)
+      .maybeSingle()
 
-    if (rowIndex === -1) {
+    if (!existing) {
       return NextResponse.json({ error: 'Modello non trovato' }, { status: 404 })
     }
 
-    const sheetRow = rowIndex + 2
-    const categoria = String(rows[rowIndex][1] ?? '').trim()
+    const { error } = await supabase
+      .from('taglie_stock')
+      .update({ foto_url: fotoUrl })
+      .eq('id_modello', modelloId)
 
-    await writeSheet(`TAGLIE_STOCK!A${sheetRow}:C${sheetRow}`, [
-      [modelloId, categoria, fotoUrl],
-    ])
+    if (error) throw error
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -42,20 +43,22 @@ export async function DELETE(
     const { modello } = await params
     const modelloId = decodeURIComponent(modello).trim().toUpperCase()
 
-    const rows = await readSheet('TAGLIE_STOCK!A2:A5000')
-    const rowIndex = rows.findIndex(
-      (r) => String(r[0] ?? '').trim().toUpperCase() === modelloId
-    )
+    const { data: existing } = await supabase
+      .from('taglie_stock')
+      .select('id_modello')
+      .eq('id_modello', modelloId)
+      .maybeSingle()
 
-    if (rowIndex === -1) {
+    if (!existing) {
       return NextResponse.json({ error: 'Modello non trovato' }, { status: 404 })
     }
 
-    const sheetRow = rowIndex + 2
+    const { error } = await supabase
+      .from('taglie_stock')
+      .delete()
+      .eq('id_modello', modelloId)
 
-    await writeSheet(`TAGLIE_STOCK!A${sheetRow}:O${sheetRow}`, [
-      ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
-    ])
+    if (error) throw error
 
     return NextResponse.json({ success: true })
   } catch (error) {

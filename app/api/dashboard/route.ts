@@ -1,42 +1,54 @@
 import { NextResponse } from 'next/server'
-import { readSheet } from '@/lib/sheets'
+import { supabase, parseEuro } from '@/lib/supabase'
 import { KpiDashboard } from '@/lib/types'
-
-function parseEuro(val: string): number {
-  return parseFloat(String(val).replace('€', '').replace(',', '.').trim()) || 0
-}
 
 export async function GET() {
   try {
-    const vendite = await readSheet('VENDITE!A2:J')
-    const stock = await readSheet('STOCK!A2:J')
+    const [{ data: stock }, { data: vendite }] = await Promise.all([
+      supabase.from('stock').select('esito, prezzo_acquisto, scadenza_reso'),
+      supabase.from('vendite').select('*'),
+    ])
 
-    const totaleStock = stock.filter((r) => r[7] === 'In stock').length
-    const totaleVenduti = stock.filter((r) => r[7] === 'Venduto').length
-    const totaleResi = stock.filter((r) => r[7] === 'Reso').length
+    const stockRows = stock || []
+    const venditeRows = vendite || []
 
-    const scadenzeImminenti = stock.filter((r) => {
-      if (r[7] !== 'In stock') return false
-      const giorni = parseInt(r[5])
-      return !isNaN(giorni) && giorni > 0 && giorni <= 15
+    const totaleStock = stockRows.filter((r) => r.esito === 'In stock').length
+    const totaleVenduti = stockRows.filter((r) => r.esito === 'Venduto').length
+    const totaleResi = stockRows.filter((r) => r.esito === 'Reso').length
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const scadenzeImminenti = stockRows.filter((r) => {
+      if (r.esito !== 'In stock') return false
+      const parts = (r.scadenza_reso || '').split('/')
+      if (parts.length !== 3) return false
+      const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+      if (isNaN(date.getTime())) return false
+      date.setHours(0, 0, 0, 0)
+      const giorni = Math.round((date.getTime() - today.getTime()) / 86400000)
+      return giorni > 0 && giorni <= 15
     }).length
 
-    const scaduti = stock.filter((r) => {
-      if (r[7] !== 'In stock') return false
-      const giorni = parseInt(r[5])
-      return !isNaN(giorni) && giorni <= 0
+    const scaduti = stockRows.filter((r) => {
+      if (r.esito !== 'In stock') return false
+      const parts = (r.scadenza_reso || '').split('/')
+      if (parts.length !== 3) return false
+      const date = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`)
+      if (isNaN(date.getTime())) return false
+      date.setHours(0, 0, 0, 0)
+      return date < today
     }).length
 
-    const venditeValide = vendite.filter((r) => r[0])
+    const fatturato = venditeRows.reduce((s, r) => s + (Number(r.prezzo_vendita) || 0), 0)
+    const costoAcquisti = venditeRows.reduce((s, r) => s + (Number(r.prezzo_acquisto) || 0), 0)
+    const guadagnoLordo = venditeRows.reduce((s, r) => s + (Number(r.guadagno_lordo) || 0), 0)
+    const feeTotali = venditeRows.reduce((s, r) => s + (Number(r.fee) || 0), 0)
+    const guadagnoNetto = venditeRows.reduce((s, r) => s + (Number(r.guadagno_netto) || 0), 0)
 
-    const fatturato = venditeValide.reduce((sum, row) => sum + parseEuro(row[5]), 0)
-    const costoAcquisti = venditeValide.reduce((sum, row) => sum + parseEuro(row[4]), 0)
-    const guadagnoLordo = venditeValide.reduce((sum, row) => sum + parseEuro(row[6]), 0)
-    const feeTotali = venditeValide.reduce((sum, row) => sum + parseEuro(row[8]), 0)
-    const guadagnoNetto = venditeValide.reduce((sum, row) => sum + parseEuro(row[9]), 0)
-
-    const capiInStock = stock.filter((r) => r[7] === 'In stock')
-    const rimanenze = capiInStock.reduce((sum, row) => sum + parseEuro(row[3]), 0)
+    const rimanenze = stockRows
+      .filter((r) => r.esito === 'In stock')
+      .reduce((s, r) => s + parseEuro(r.prezzo_acquisto || ''), 0)
 
     const kpi: KpiDashboard = {
       totaleStock,

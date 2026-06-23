@@ -1,70 +1,19 @@
 import { NextResponse } from 'next/server'
-import { google } from 'googleapis'
-import type { sheets_v4 } from 'googleapis'
-import { deleteVenditeRowsBySku } from '@/lib/sheet-helpers'
+import { supabase, computeGiorniRimanenti, computeStatoScadenza } from '@/lib/supabase'
 
-const STOCK_TAB = 'STOCK'
-const RANGE = `${STOCK_TAB}!A:J`
-
-function getAuth() {
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  })
-}
-
-async function getStockSheetId(
-  sheets: sheets_v4.Sheets,
-  spreadsheetId: string
-): Promise<number | null> {
-  const res = await sheets.spreadsheets.get({
-    spreadsheetId,
-    fields: 'sheets(properties(sheetId,title))',
-  })
-  const sid = res.data.sheets?.find(
-    (s) => s.properties?.title?.toLowerCase() === STOCK_TAB.toLowerCase()
-  )?.properties?.sheetId
-  return sid ?? null
-}
-
-async function findRow(
-  spreadsheetId: string,
-  targetSku: string
-): Promise<{ sheetRow: number; row: string[] } | null> {
-  const auth = getAuth()
-  const sheets = google.sheets({ version: 'v4', auth })
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: RANGE,
-  })
-  const rows = response.data.values
-  if (!rows || rows.length < 2) return null
-  const want = targetSku.trim().toLowerCase()
-  for (let i = 1; i < rows.length; i++) {
-    const sku = String(rows[i][0] ?? '').trim()
-    if (sku.toLowerCase() === want) {
-      const row = rows[i].map((c: unknown) => String(c ?? ''))
-      return { sheetRow: i + 1, row }
-    }
-  }
-  return null
-}
-
-function rowToItem(row: string[]) {
+function rowToItem(row: Record<string, string>) {
+  const giorniRimanenti = computeGiorniRimanenti(row.scadenza_reso || '')
   return {
-    sku: row[0] || '',
-    numeroOrdine: row[1] || '',
-    dataOrdine: row[2] || '',
-    prezzoAcquisto: row[3] || '',
-    scadenzaReso: row[4] || '',
-    giorniRimanenti: (() => { const g = Number(row[5]); return row[5] !== '' && row[5] !== undefined && !isNaN(g) ? g : null })(),
-    statoScadenza: row[6] || '',
-    esito: row[7] || '',
-    idModello: row[8] || '',
-    taglia: row[9] || '',
+    sku: row.sku || '',
+    numeroOrdine: row.numero_ordine || '',
+    dataOrdine: row.data_ordine || '',
+    prezzoAcquisto: row.prezzo_acquisto || '',
+    scadenzaReso: row.scadenza_reso || '',
+    giorniRimanenti,
+    statoScadenza: computeStatoScadenza(giorniRimanenti),
+    esito: row.esito || '',
+    idModello: row.id_modello || '',
+    taglia: row.taglia || '',
   }
 }
 
@@ -75,25 +24,21 @@ export async function GET(
   try {
     const { sku: rawSku } = await context.params
     const sku = decodeURIComponent(rawSku)
-    const found = await findRow(process.env.GOOGLE_SHEET_ID!, sku)
-    if (!found) {
-      return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 })
-    }
-    return NextResponse.json({ item: rowToItem(found.row) })
+
+    const { data, error } = await supabase
+      .from('stock')
+      .select('*')
+      .eq('sku', sku)
+      .maybeSingle()
+
+    if (error) throw error
+    if (!data) return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 })
+
+    return NextResponse.json({ item: rowToItem(data) })
   } catch (error) {
     console.error('GET /api/stock/[sku]:', error)
     return NextResponse.json({ error: 'Errore lettura foglio' }, { status: 500 })
   }
-}
-
-type PatchBody = {
-  numeroOrdine?: string
-  dataOrdine?: string
-  prezzoAcquisto?: string
-  scadenzaReso?: string
-  esito?: string
-  idModello?: string
-  taglia?: string
 }
 
 export async function PATCH(
@@ -103,60 +48,44 @@ export async function PATCH(
   try {
     const { sku: rawSku } = await context.params
     const sku = decodeURIComponent(rawSku)
-    const body = (await req.json()) as PatchBody
+    const body = await req.json()
 
-    const spreadsheetId = process.env.GOOGLE_SHEET_ID!
-    const found = await findRow(spreadsheetId, sku)
-    if (!found) {
-      return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 })
-    }
+    const { data: current, error: fetchError } = await supabase
+      .from('stock')
+      .select('*')
+      .eq('sku', sku)
+      .maybeSingle()
 
-    const cur = found.row
-    const prevEsito = String(cur[7] ?? '').trim()
-    const next = [...cur]
-    while (next.length < 10) next.push('')
+    if (fetchError) throw fetchError
+    if (!current) return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 })
 
-    const apply = (idx: number, v: string | undefined) => {
-      if (v !== undefined) next[idx] = v
-    }
-    apply(1, body.numeroOrdine)
-    apply(2, body.dataOrdine)
-    apply(3, body.prezzoAcquisto)
-    apply(4, body.scadenzaReso)
-    apply(7, body.esito)
-    apply(8, body.idModello)
-    apply(9, body.taglia)
-
+    const prevEsito = String(current.esito ?? '')
     const newEsito = body.esito !== undefined ? String(body.esito).trim() : prevEsito
-    if (prevEsito === 'Venduto' && newEsito === 'In stock') {
-      await deleteVenditeRowsBySku(spreadsheetId, String(cur[0] ?? '').trim())
-    }
+
+    const updates: Record<string, string> = {}
+    if (body.numeroOrdine !== undefined) updates.numero_ordine = body.numeroOrdine
+    if (body.dataOrdine !== undefined) updates.data_ordine = body.dataOrdine
+    if (body.prezzoAcquisto !== undefined) updates.prezzo_acquisto = body.prezzoAcquisto
+    if (body.scadenzaReso !== undefined) updates.scadenza_reso = body.scadenzaReso
+    if (body.esito !== undefined) updates.esito = body.esito
+    if (body.idModello !== undefined) updates.id_modello = body.idModello
+    if (body.taglia !== undefined) updates.taglia = body.taglia
+
     if (newEsito === 'Reso, ma in stock') {
-      next[3] = '0'
-      next[4] = ''
+      updates.prezzo_acquisto = '0'
+      updates.scadenza_reso = ''
     }
 
-    const row = found.sheetRow
-    const b = next[1] ?? ''
-    const c = next[2] ?? ''
-    const d = next[3] ?? ''
-    const e = next[4] ?? ''
-    const h = next[7] ?? ''
-    const i = next[8] ?? ''
-    const j = next[9] ?? ''
+    if (prevEsito === 'Venduto' && newEsito === 'In stock') {
+      await supabase.from('vendite').delete().eq('sku', sku)
+    }
 
-    const auth = getAuth()
-    const sheets = google.sheets({ version: 'v4', auth })
-    await sheets.spreadsheets.values.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        valueInputOption: 'USER_ENTERED',
-        data: [
-          { range: `${STOCK_TAB}!B${row}:E${row}`, values: [[b, c, d, e]] },
-          { range: `${STOCK_TAB}!H${row}:J${row}`, values: [[h, i, j]] },
-        ],
-      },
-    })
+    const { error } = await supabase
+      .from('stock')
+      .update(updates)
+      .eq('sku', sku)
+
+    if (error) throw error
 
     return NextResponse.json({ ok: true })
   } catch (error) {
@@ -172,41 +101,13 @@ export async function DELETE(
   try {
     const { sku: rawSku } = await context.params
     const sku = decodeURIComponent(rawSku)
-    const spreadsheetId = process.env.GOOGLE_SHEET_ID!
 
-    const found = await findRow(spreadsheetId, sku)
-    if (!found) {
-      return NextResponse.json({ error: 'Prodotto non trovato' }, { status: 404 })
-    }
+    const { error } = await supabase
+      .from('stock')
+      .delete()
+      .eq('sku', sku)
 
-    const auth = getAuth()
-    const sheets = google.sheets({ version: 'v4', auth })
-    const sheetId = await getStockSheetId(sheets, spreadsheetId)
-    if (sheetId == null) {
-      return NextResponse.json(
-        { error: `Foglio "${STOCK_TAB}" non trovato` },
-        { status: 500 }
-      )
-    }
-
-    const startIndex = found.sheetRow - 1
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
-        requests: [
-          {
-            deleteDimension: {
-              range: {
-                sheetId,
-                dimension: 'ROWS',
-                startIndex,
-                endIndex: startIndex + 1,
-              },
-            },
-          },
-        ],
-      },
-    })
+    if (error) throw error
 
     return NextResponse.json({ ok: true })
   } catch (error) {
