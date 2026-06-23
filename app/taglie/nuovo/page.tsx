@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function NuovoModelloPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [idModello, setIdModello] = useState('')
   const [categoria, setCategoria] = useState('')
-  const [fotoUrl, setFotoUrl] = useState('')
   const [categorie, setCategorie] = useState<string[]>([])
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -17,11 +19,18 @@ export default function NuovoModelloPage() {
   useEffect(() => {
     fetch('/api/taglie')
       .then((r) => r.json())
-      .then((data) => {
-        setCategorie(data.categorie || [])
-      })
+      .then((data) => setCategorie(data.categorie || []))
       .catch(() => {})
   }, [])
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFotoFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setFotoPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -32,14 +41,21 @@ export default function NuovoModelloPage() {
     }
     setLoading(true)
     try {
+      let fotoUrl = ''
+      if (fotoFile) {
+        const fd = new FormData()
+        fd.append('file', fotoFile)
+        fd.append('modelloId', idModello.trim())
+        const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+        const uploadData = await uploadRes.json()
+        if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore upload foto')
+        fotoUrl = uploadData.url
+      }
+
       const res = await fetch('/api/taglie', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          idModello: idModello.trim(),
-          categoria: categoria.trim(),
-          fotoUrl: fotoUrl.trim(),
-        }),
+        body: JSON.stringify({ idModello: idModello.trim(), categoria: categoria.trim(), fotoUrl }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -49,8 +65,8 @@ export default function NuovoModelloPage() {
       }
       setSuccess(true)
       setTimeout(() => router.back(), 1000)
-    } catch {
-      setError('Errore di rete. Riprova.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore di rete. Riprova.')
       setLoading(false)
     }
   }
@@ -65,15 +81,10 @@ export default function NuovoModelloPage() {
       margin: '0 auto',
       paddingBottom: 90,
     }}>
-      {/* BACK BUTTON */}
       <div style={{ padding: '52px 20px 0' }}>
         <button
           onClick={() => router.back()}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', color: '#10B981',
-            fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0,
-          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#10B981', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -82,7 +93,6 @@ export default function NuovoModelloPage() {
         </button>
       </div>
 
-      {/* HEADER */}
       <div style={{ padding: '20px 20px 0' }}>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#F8FAFC', margin: 0 }}>
           Nuovo modello
@@ -92,8 +102,66 @@ export default function NuovoModelloPage() {
         </p>
       </div>
 
-      {/* FORM */}
-      <form onSubmit={handleSubmit} style={{ padding: '28px 20px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <form onSubmit={handleSubmit} style={{ padding: '28px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+        {/* FOTO */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Foto
+          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{ display: 'none' }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              width: '100%',
+              height: fotoPreview ? 'auto' : 120,
+              background: '#0B1F1A',
+              border: `2px dashed ${fotoPreview ? '#10B981' : '#1B3A34'}`,
+              borderRadius: 14,
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              overflow: 'hidden',
+              padding: 0,
+            }}
+          >
+            {fotoPreview ? (
+              <img
+                src={fotoPreview}
+                alt="preview"
+                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 12 }}
+              />
+            ) : (
+              <>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="18" height="18" rx="3" stroke="#64748B" strokeWidth="1.5" />
+                  <circle cx="8.5" cy="8.5" r="1.5" fill="#64748B" />
+                  <path d="M21 15l-5-5L5 21" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span style={{ fontSize: 13, color: '#64748B' }}>Tocca per caricare una foto</span>
+              </>
+            )}
+          </button>
+          {fotoPreview && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{ background: 'none', border: 'none', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+            >
+              Cambia foto
+            </button>
+          )}
+        </div>
 
         {/* ID Modello */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -105,15 +173,7 @@ export default function NuovoModelloPage() {
             value={idModello}
             onChange={(e) => setIdModello(e.target.value.toUpperCase())}
             placeholder="es. NIKE AIR MAX 90"
-            style={{
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 12,
-              padding: '14px 16px',
-              color: '#F8FAFC',
-              fontSize: 15,
-              outline: 'none',
-            }}
+            style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12, padding: '14px 16px', color: '#F8FAFC', fontSize: 15, outline: 'none' }}
           />
         </div>
 
@@ -122,7 +182,7 @@ export default function NuovoModelloPage() {
           <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Categoria *
           </label>
-          {categorie.length > 0 ? (
+          {categorie.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {categorie.map((cat) => (
                 <button
@@ -143,80 +203,23 @@ export default function NuovoModelloPage() {
                   {cat}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setCategoria('')}
-                style={{
-                  background: 'transparent',
-                  border: '1.5px dashed #1B3A34',
-                  borderRadius: 10,
-                  padding: '8px 16px',
-                  color: '#64748B',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                + Altra
-              </button>
             </div>
-          ) : null}
+          )}
           <input
             type="text"
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
             placeholder="es. Sneakers, Felpa, Pantalone..."
-            style={{
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 12,
-              padding: '14px 16px',
-              color: '#F8FAFC',
-              fontSize: 15,
-              outline: 'none',
-            }}
+            style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12, padding: '14px 16px', color: '#F8FAFC', fontSize: 15, outline: 'none' }}
           />
         </div>
 
-        {/* Foto URL */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Link foto (Google Drive)
-          </label>
-          <input
-            type="text"
-            value={fotoUrl}
-            onChange={(e) => setFotoUrl(e.target.value)}
-            placeholder="https://drive.google.com/file/d/..."
-            style={{
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 12,
-              padding: '14px 16px',
-              color: '#F8FAFC',
-              fontSize: 15,
-              outline: 'none',
-            }}
-          />
-          <span style={{ fontSize: 12, color: '#64748B' }}>
-            Opzionale — incolla il link condivisibile di Google Drive
-          </span>
-        </div>
-
-        {/* Errore */}
         {error && (
-          <div style={{
-            background: 'rgba(239,68,68,0.1)',
-            border: '1.5px solid #EF4444',
-            borderRadius: 12,
-            padding: '12px 16px',
-            color: '#EF4444',
-            fontSize: 14,
-          }}>
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1.5px solid #EF4444', borderRadius: 12, padding: '12px 16px', color: '#EF4444', fontSize: 14 }}>
             {error}
           </div>
         )}
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={loading || success}
@@ -245,13 +248,8 @@ export default function NuovoModelloPage() {
               </svg>
               Modello aggiunto!
             </>
-          ) : loading ? (
-            'Salvataggio...'
-          ) : (
-            'Aggiungi modello'
-          )}
+          ) : loading ? 'Caricamento...' : 'Aggiungi modello'}
         </button>
-
       </form>
     </div>
   )

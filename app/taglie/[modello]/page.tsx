@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 
 interface ModelloDetail {
@@ -24,63 +24,70 @@ const TAGLIE = [
   { key: 'L',  stockKey: 'lStock',  skuKey: 'skuL'  },
 ] as const
 
+function getImageSrc(fotoUrl: string) {
+  if (!fotoUrl) return null
+  if (fotoUrl.includes('supabase.co/storage')) return fotoUrl
+  return `/api/image-proxy?url=${encodeURIComponent(fotoUrl)}`
+}
+
 export default function ModelloPage() {
   const router = useRouter()
   const params = useParams()
   const modelloId = decodeURIComponent(params.modello as string)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [item, setItem] = useState<ModelloDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [showDeletePopup, setShowDeletePopup] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [fotoSaved, setFotoSaved] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [confirmDone, setConfirmDone] = useState(false)
-  const [editingFoto, setEditingFoto] = useState(false)
-  const [fotoUrlEdit, setFotoUrlEdit] = useState('')
-  const [savingFoto, setSavingFoto] = useState(false)
-  const [fotoSaved, setFotoSaved] = useState(false)
 
   useEffect(() => {
     fetch('/api/taglie')
       .then((r) => r.json())
       .then((data) => {
         const found = (data.items || []).find(
-          (i: ModelloDetail) =>
-            i.idModello.toLowerCase() === modelloId.toLowerCase()
+          (i: ModelloDetail) => i.idModello.toLowerCase() === modelloId.toLowerCase()
         )
-        if (found) {
-          setItem(found)
-        } else {
-          setNotFound(true)
-        }
+        if (found) setItem(found)
+        else setNotFound(true)
         setLoading(false)
       })
       .catch(() => setLoading(false))
   }, [modelloId])
 
-  async function handleSalvaFoto() {
-    setSavingFoto(true)
+  async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
     try {
-      const res = await fetch(`/api/taglie/${encodeURIComponent(modelloId)}`, {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('modelloId', modelloId)
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: fd })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) throw new Error(uploadData.error || 'Errore upload')
+
+      const newUrl = uploadData.url
+
+      const patchRes = await fetch(`/api/taglie/${encodeURIComponent(modelloId)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fotoUrl: fotoUrlEdit }),
+        body: JSON.stringify({ fotoUrl: newUrl }),
       })
-      const data = await res.json()
-      if (!res.ok) {
-        alert(data.error || 'Errore durante il salvataggio')
-        setSavingFoto(false)
-        return
-      }
-      setItem((prev) => prev ? { ...prev, fotoUrl: fotoUrlEdit } : prev)
-      setEditingFoto(false)
+      if (!patchRes.ok) throw new Error('Errore salvataggio')
+
+      setItem((prev) => prev ? { ...prev, fotoUrl: newUrl } : prev)
       setFotoSaved(true)
-      setTimeout(() => setFotoSaved(false), 2000)
-    } catch {
-      alert('Errore di rete. Riprova.')
+      setTimeout(() => setFotoSaved(false), 2500)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Errore durante il caricamento')
     }
-    setSavingFoto(false)
+    setUploading(false)
   }
 
   async function handleConferma() {
@@ -88,17 +95,13 @@ export default function ModelloPage() {
     await new Promise((r) => setTimeout(r, 600))
     setConfirming(false)
     setConfirmDone(true)
-    setTimeout(() => {
-      router.back()
-    }, 800)
+    setTimeout(() => router.back(), 800)
   }
 
   async function handleElimina() {
     setDeleting(true)
     try {
-      const res = await fetch(`/api/taglie/${encodeURIComponent(modelloId)}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/taglie/${encodeURIComponent(modelloId)}`, { method: 'DELETE' })
       const data = await res.json()
       if (!res.ok) {
         alert(data.error || "Errore durante l'eliminazione")
@@ -119,9 +122,7 @@ export default function ModelloPage() {
     return (
       <div style={{ minHeight: '100dvh', background: '#061311', maxWidth: 430, margin: '0 auto', padding: '52px 20px 90px' }}>
         <div style={{ height: 200, borderRadius: 16, background: '#0B1F1A', opacity: 0.5, marginBottom: 16 }} />
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} style={{ height: 64, borderRadius: 12, background: '#0B1F1A', opacity: 0.5, marginBottom: 10 }} />
-        ))}
+        {[1,2,3,4].map((i) => <div key={i} style={{ height: 64, borderRadius: 12, background: '#0B1F1A', opacity: 0.5, marginBottom: 10 }} />)}
       </div>
     )
   }
@@ -142,69 +143,25 @@ export default function ModelloPage() {
     )
   }
 
+  const imageSrc = getImageSrc(item.fotoUrl)
+
   return (
     <div style={{ minHeight: '100dvh', background: '#061311', display: 'flex', flexDirection: 'column', maxWidth: 430, margin: '0 auto', paddingBottom: 90 }}>
 
-      {/* POPUP CONFERMA ELIMINAZIONE */}
+      {/* POPUP ELIMINA */}
       {showDeletePopup && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          background: 'rgba(0,0,0,0.75)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '0 24px',
-        }}>
-          <div style={{
-            background: '#0B1F1A',
-            border: '1.5px solid #1B3A34',
-            borderRadius: 20,
-            padding: '28px 24px',
-            width: '100%',
-            maxWidth: 360,
-          }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px' }}>
+          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 20, padding: '28px 24px', width: '100%', maxWidth: 360 }}>
             <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>🗑️</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#F8FAFC', textAlign: 'center', marginBottom: 8 }}>
-              Elimina modello?
-            </div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#F8FAFC', textAlign: 'center', marginBottom: 8 }}>Elimina modello?</div>
             <div style={{ fontSize: 14, color: '#94A3B8', textAlign: 'center', marginBottom: 24, lineHeight: 1.5 }}>
-              Stai per eliminare{' '}
-              <strong style={{ color: '#F8FAFC' }}>{item.idModello}</strong>{' '}
-              dal foglio. Questa azione non può essere annullata.
+              Stai per eliminare <strong style={{ color: '#F8FAFC' }}>{item.idModello}</strong> dal catalogo.
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setShowDeletePopup(false)}
-                disabled={deleting}
-                style={{
-                  flex: 1,
-                  background: '#102A24',
-                  border: '1.5px solid #1B3A34',
-                  borderRadius: 14,
-                  color: '#F8FAFC',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  padding: '14px',
-                  cursor: deleting ? 'not-allowed' : 'pointer',
-                  opacity: deleting ? 0.5 : 1,
-                }}
-              >
+              <button onClick={() => setShowDeletePopup(false)} disabled={deleting} style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.5 : 1 }}>
                 Non eliminare
               </button>
-              <button
-                onClick={handleElimina}
-                disabled={deleting}
-                style={{
-                  flex: 1,
-                  background: '#EF4444',
-                  border: 'none',
-                  borderRadius: 14,
-                  color: 'white',
-                  fontSize: 15,
-                  fontWeight: 700,
-                  padding: '14px',
-                  cursor: deleting ? 'not-allowed' : 'pointer',
-                  opacity: deleting ? 0.6 : 1,
-                }}
-              >
+              <button onClick={handleElimina} disabled={deleting} style={{ flex: 1, background: '#EF4444', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}>
                 {deleting ? 'Eliminando...' : 'Elimina'}
               </button>
             </div>
@@ -212,12 +169,9 @@ export default function ModelloPage() {
         </div>
       )}
 
-      {/* BACK BUTTON */}
+      {/* BACK */}
       <div style={{ padding: '52px 20px 0' }}>
-        <button
-          onClick={() => router.back()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#10B981', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}
-        >
+        <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#10B981', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -225,28 +179,50 @@ export default function ModelloPage() {
         </button>
       </div>
 
-      {/* HERO: immagine + nome + categoria */}
+      {/* HERO */}
       <div style={{ padding: '16px 20px 0', display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div style={{ width: 110, height: 110, borderRadius: 16, background: '#102A24', border: '1.5px solid #1B3A34', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {item.fotoUrl ? (
-            <img
-              src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
-              alt={item.idModello}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-            />
+        {/* foto cliccabile per cambiare */}
+        <div
+          onClick={() => fileInputRef.current?.click()}
+          style={{ width: 110, height: 110, borderRadius: 16, background: '#102A24', border: `1.5px solid ${uploading ? '#10B981' : '#1B3A34'}`, overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}
+        >
+          {uploading ? (
+            <div style={{ fontSize: 12, color: '#10B981', fontWeight: 700, textAlign: 'center', padding: 8 }}>Carico...</div>
+          ) : imageSrc ? (
+            <>
+              <img src={imageSrc} alt={item.idModello} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.5)', fontSize: 10, color: 'white', textAlign: 'center', padding: '4px 0' }}>
+                Cambia
+              </div>
+            </>
           ) : (
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="18" height="18" rx="3" stroke="#1B3A34" strokeWidth="1.5" />
-            </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke="#1B3A34" strokeWidth="1.5" />
+                <circle cx="8.5" cy="8.5" r="1.5" fill="#1B3A34" />
+                <path d="M21 15l-5-5L5 21" stroke="#1B3A34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span style={{ fontSize: 10, color: '#64748B' }}>Carica foto</span>
+            </div>
+          )}
+          {fotoSaved && (
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(16,185,129,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
           )}
         </div>
+
+        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFotoChange} style={{ display: 'none' }} />
+
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2, wordBreak: 'break-word' }}>
             {item.idModello}
           </div>
-          <div style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>
-            {item.categoria}
+          <div style={{ fontSize: 14, color: '#64748B', marginTop: 4 }}>{item.categoria}</div>
+          <div style={{ fontSize: 12, color: '#10B981', marginTop: 8, cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+            {item.fotoUrl ? '📷 Cambia foto' : '📷 Carica foto'}
           </div>
         </div>
       </div>
@@ -262,42 +238,22 @@ export default function ModelloPage() {
         {TAGLIE.map(({ key, stockKey, skuKey }) => {
           const stock = item[stockKey] as number
           const skuRaw = item[skuKey] as string
-          const skus = skuRaw
-            ? skuRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean)
-            : []
+          const skus = skuRaw ? skuRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean) : []
           const disponibile = stock > 0
-
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>
-              <div style={{
-                width: 44, minHeight: 52, borderRadius: 12,
-                background: disponibile ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.10)',
-                border: `1.5px solid ${disponibile ? '#10B981' : '#EF4444'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: disponibile ? '#10B981' : '#EF4444' }}>
-                  {key}
-                </span>
+              <div style={{ width: 44, minHeight: 52, borderRadius: 12, background: disponibile ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.10)', border: `1.5px solid ${disponibile ? '#10B981' : '#EF4444'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800, color: disponibile ? '#10B981' : '#EF4444' }}>{key}</span>
               </div>
-              <div style={{
-                flex: 1, background: '#0B1F1A', border: '1.5px solid #1B3A34',
-                borderRadius: 12, padding: '10px 14px', minHeight: 52,
-                display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', overflowX: 'auto',
-              }}>
+              <div style={{ flex: 1, background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12, padding: '10px 14px', minHeight: 52, display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                 {skus.length > 0 ? (
                   skus.map((sku, idx) => (
-                    <span key={idx} style={{
-                      background: '#102A24', border: '1px solid #1B3A34',
-                      borderRadius: 8, padding: '3px 10px',
-                      fontSize: 13, fontWeight: 600, color: '#F8FAFC', whiteSpace: 'nowrap',
-                    }}>
+                    <span key={idx} style={{ background: '#102A24', border: '1px solid #1B3A34', borderRadius: 8, padding: '3px 10px', fontSize: 13, fontWeight: 600, color: '#F8FAFC', whiteSpace: 'nowrap' }}>
                       {sku}
                     </span>
                   ))
                 ) : (
-                  <span style={{ fontSize: 13, color: '#64748B' }}>
-                    {disponibile ? 'Nessuno SKU registrato' : 'Non disponibile'}
-                  </span>
+                  <span style={{ fontSize: 13, color: '#64748B' }}>{disponibile ? 'Nessuno SKU registrato' : 'Non disponibile'}</span>
                 )}
               </div>
             </div>
@@ -305,177 +261,24 @@ export default function ModelloPage() {
         })}
       </div>
 
-      {/* MODIFICA FOTO URL */}
-      <div style={{ padding: '24px 20px 0' }}>
-        <div style={{
-          background: '#0B1F1A',
-          border: '1.5px solid #1B3A34',
-          borderRadius: 16,
-          padding: '16px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: editingFoto ? 12 : 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="3" stroke="#64748B" strokeWidth="1.5" />
-                <circle cx="8.5" cy="8.5" r="1.5" fill="#64748B" />
-                <path d="M21 15l-5-5L5 21" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                URL Foto
-              </span>
-              {fotoSaved && (
-                <span style={{ fontSize: 12, color: '#10B981', fontWeight: 600 }}>Salvata!</span>
-              )}
-            </div>
-            {!editingFoto && (
-              <button
-                onClick={() => {
-                  setFotoUrlEdit(item.fotoUrl || '')
-                  setEditingFoto(true)
-                }}
-                style={{
-                  background: 'rgba(16,185,129,0.12)',
-                  border: '1px solid #10B981',
-                  borderRadius: 8,
-                  color: '#10B981',
-                  fontSize: 12,
-                  fontWeight: 700,
-                  padding: '5px 12px',
-                  cursor: 'pointer',
-                }}
-              >
-                Modifica
-              </button>
-            )}
-          </div>
-
-          {!editingFoto ? (
-            <div style={{
-              marginTop: 8,
-              fontSize: 13,
-              color: item.fotoUrl ? '#94A3B8' : '#64748B',
-              wordBreak: 'break-all',
-              lineHeight: 1.4,
-            }}>
-              {item.fotoUrl || 'Nessuna foto impostata'}
-            </div>
-          ) : (
-            <>
-              <input
-                type="url"
-                placeholder="https://..."
-                value={fotoUrlEdit}
-                onChange={(e) => setFotoUrlEdit(e.target.value)}
-                style={{
-                  width: '100%',
-                  background: '#102A24',
-                  border: '1.5px solid #1B3A34',
-                  borderRadius: 12,
-                  color: '#F8FAFC',
-                  fontSize: 14,
-                  padding: '11px 14px',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                <button
-                  onClick={() => setEditingFoto(false)}
-                  disabled={savingFoto}
-                  style={{
-                    flex: 1,
-                    background: 'transparent',
-                    border: '1.5px solid #1B3A34',
-                    borderRadius: 12,
-                    color: '#94A3B8',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    padding: '11px',
-                    cursor: savingFoto ? 'not-allowed' : 'pointer',
-                    opacity: savingFoto ? 0.5 : 1,
-                  }}
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={handleSalvaFoto}
-                  disabled={savingFoto}
-                  style={{
-                    flex: 1,
-                    background: '#10B981',
-                    border: 'none',
-                    borderRadius: 12,
-                    color: 'white',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    padding: '11px',
-                    cursor: savingFoto ? 'not-allowed' : 'pointer',
-                    opacity: savingFoto ? 0.7 : 1,
-                  }}
-                >
-                  {savingFoto ? 'Salvo...' : 'Salva'}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* BOTTONI CONFERMA / ELIMINA */}
+      {/* BOTTONI */}
       <div style={{ padding: '28px 20px 0', display: 'flex', flexDirection: 'column', gap: 12 }}>
         <button
           onClick={handleConferma}
           disabled={confirming || confirmDone}
-          style={{
-            width: '100%',
-            background: confirmDone ? '#059669' : confirming ? '#065F46' : '#10B981',
-            border: 'none',
-            borderRadius: 16,
-            color: 'white',
-            fontSize: 16,
-            fontWeight: 700,
-            padding: '16px',
-            cursor: confirming || confirmDone ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 24px rgba(16,185,129,0.25)',
-            transition: 'background 0.2s',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-          }}
+          style={{ width: '100%', background: confirmDone ? '#059669' : confirming ? '#065F46' : '#10B981', border: 'none', borderRadius: 16, color: 'white', fontSize: 16, fontWeight: 700, padding: '16px', cursor: confirming || confirmDone ? 'not-allowed' : 'pointer', boxShadow: '0 4px 24px rgba(16,185,129,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
         >
           {confirmDone ? (
-            <>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              Confermato!
-            </>
-          ) : confirming ? (
-            'Conferma in corso...'
-          ) : (
-            'Conferma'
-          )}
+            <><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>Confermato!</>
+          ) : confirming ? 'Conferma in corso...' : 'Conferma'}
         </button>
-
         <button
           onClick={() => setShowDeletePopup(true)}
-          style={{
-            width: '100%',
-            background: 'transparent',
-            border: '1.5px solid #EF4444',
-            borderRadius: 16,
-            color: '#EF4444',
-            fontSize: 16,
-            fontWeight: 700,
-            padding: '16px',
-            cursor: 'pointer',
-          }}
+          style={{ width: '100%', background: 'transparent', border: '1.5px solid #EF4444', borderRadius: 16, color: '#EF4444', fontSize: 16, fontWeight: 700, padding: '16px', cursor: 'pointer' }}
         >
           Elimina modello
         </button>
       </div>
-
     </div>
   )
 }
