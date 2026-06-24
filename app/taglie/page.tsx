@@ -17,6 +17,77 @@ interface ModelloItem {
   skuL: string
 }
 
+function ModelCard({ item, totale, onClick, dimmed }: { item: ModelloItem; totale: number; onClick: () => void; dimmed?: boolean }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        background: '#0B1F1A',
+        border: '1.5px solid #1B3A34',
+        borderRadius: 14,
+        padding: '14px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        cursor: 'pointer',
+        opacity: dimmed ? 0.55 : 1,
+      }}
+    >
+      <div
+        style={{
+          width: 52,
+          height: 52,
+          borderRadius: 12,
+          background: '#102A24',
+          border: '1px solid #1B3A34',
+          overflow: 'hidden',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {item.fotoUrl ? (
+          <img
+            src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
+            alt={item.idModello}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            onError={(e) => { ;(e.target as HTMLImageElement).style.display = 'none' }}
+          />
+        ) : (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="3" width="18" height="18" rx="3" stroke="#1B3A34" strokeWidth="1.5" />
+          </svg>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {item.idModello}
+        </div>
+        <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>{item.categoria}</div>
+      </div>
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div
+          style={{
+            background: totale > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)',
+            border: `1px solid ${totale > 0 ? '#10B981' : '#64748B'}`,
+            borderRadius: 8,
+            padding: '4px 10px',
+            fontSize: 13,
+            fontWeight: 700,
+            color: totale > 0 ? '#10B981' : '#64748B',
+          }}
+        >
+          {totale} pz
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M9 18l6-6-6-6" stroke="#1B3A34" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
 export default function TagliePage() {
   const router = useRouter()
   const [items, setItems] = useState<ModelloItem[]>([])
@@ -24,6 +95,7 @@ export default function TagliePage() {
   const [search, setSearch] = useState('')
   const [categoriaAttiva, setCategoriaAttiva] = useState<string>('Tutte')
   const [categorie, setCategorie] = useState<string[]>([])
+  const [mostraEsauriti, setMostraEsauriti] = useState(false)
 
   useEffect(() => {
     fetch('/api/taglie')
@@ -50,6 +122,9 @@ export default function TagliePage() {
 
   const getTotaleStock = (item: ModelloItem) =>
     item.xsStock + item.sStock + item.mStock + item.lStock
+
+  const filteredAttivi = filtered.filter((item) => getTotaleStock(item) > 0)
+  const filteredEsauriti = filtered.filter((item) => getTotaleStock(item) === 0)
 
   return (
     <div
@@ -206,7 +281,7 @@ export default function TagliePage() {
               />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredAttivi.length === 0 && filteredEsauriti.length === 0 ? (
           <div
             style={{
               textAlign: 'center',
@@ -222,101 +297,48 @@ export default function TagliePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filtered.map((item) => {
-              const totale = getTotaleStock(item)
-              return (
-                <div
-                  key={item.idModello}
-                  onClick={() => router.push(`/taglie/${encodeURIComponent(item.idModello)}`)}
-                  style={{
-                    background: '#0B1F1A',
-                    border: '1.5px solid #1B3A34',
-                    borderRadius: 14,
-                    padding: '14px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
-                    cursor: 'pointer',
-                  }}
+            {/* LISTA ATTIVI */}
+            {filteredAttivi.map((item) => (
+              <ModelCard key={item.idModello} item={item} totale={getTotaleStock(item)} onClick={() => router.push(`/taglie/${encodeURIComponent(item.idModello)}`)} />
+            ))}
+
+            {/* BOTTONE CAPI ESAURITI */}
+            {filteredEsauriti.length > 0 && (
+              <button
+                onClick={() => setMostraEsauriti((v) => !v)}
+                style={{
+                  marginTop: 8,
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: 14,
+                  background: '#0B1F1A',
+                  border: '1.5px solid #1B3A34',
+                  color: '#94A3B8',
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+              >
+                <span>📦 Capi esauriti ({filteredEsauriti.length})</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  style={{ transform: mostraEsauriti ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
                 >
-                  {/* Foto */}
-                  <div
-                    style={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 12,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {item.fotoUrl ? (
-                      <img
-                        src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
-                        alt={item.idModello}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#1B3A34" strokeWidth="1.5" />
-                      </svg>
-                    )}
-                  </div>
+                  <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        color: '#F8FAFC',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.idModello}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>
-                      {item.categoria}
-                    </div>
-                  </div>
-
-                  {/* Stock badge + arrow */}
-                  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div
-                      style={{
-                        background: totale > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.10)',
-                        border: `1px solid ${totale > 0 ? '#10B981' : '#EF4444'}`,
-                        borderRadius: 8,
-                        padding: '4px 10px',
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: totale > 0 ? '#10B981' : '#EF4444',
-                      }}
-                    >
-                      {totale} pz
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M9 18l6-6-6-6"
-                        stroke="#1B3A34"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                </div>
-              )
-            })}
+            {/* LISTA ESAURITI (collassabile) */}
+            {mostraEsauriti && filteredEsauriti.map((item) => (
+              <ModelCard key={item.idModello} item={item} totale={0} onClick={() => router.push(`/taglie/${encodeURIComponent(item.idModello)}`)} dimmed />
+            ))}
           </div>
         )}
       </div>
