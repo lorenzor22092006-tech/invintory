@@ -214,7 +214,7 @@ export default function ModelloPage() {
           )}
         </div>
 
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFotoChange} style={{ display: 'none' }} />
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*" onChange={handleFotoChange} style={{ display: 'none' }} />
 
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2, wordBreak: 'break-word' }}>

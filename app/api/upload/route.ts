@@ -11,8 +11,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nessun file' }, { status: 400 })
     }
 
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const filename = `${modelloId.replace(/[^a-zA-Z0-9\-_]/g, '_')}_${Date.now()}.${ext}`
+    let ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    if (ext === 'heic' || ext === 'heif') ext = 'jpg'
+
+    let contentType = file.type || 'image/jpeg'
+    if (contentType === 'image/heic' || contentType === 'image/heif' || contentType === '') {
+      contentType = 'image/jpeg'
+    }
+
+    const safeModello = modelloId
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toLowerCase() || 'foto'
+    const filename = `${safeModello}_${Date.now()}.${ext}`
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = new Uint8Array(arrayBuffer)
@@ -20,7 +32,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.storage
       .from('modelli')
       .upload(filename, buffer, {
-        contentType: file.type || 'image/jpeg',
+        contentType,
         upsert: true,
       })
 
