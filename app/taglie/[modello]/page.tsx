@@ -24,6 +24,28 @@ const TAGLIE = [
   { key: 'L',  stockKey: 'lStock',  skuKey: 'skuL'  },
 ] as const
 
+function convertToJpeg(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); resolve(file); return }
+      ctx.drawImage(img, 0, 0)
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url)
+        if (!blob) { resolve(file); return }
+        resolve(new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' }))
+      }, 'image/jpeg', 0.88)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
 function getImageSrc(fotoUrl: string) {
   if (!fotoUrl) return null
   if (fotoUrl.includes('supabase.co/storage')) return fotoUrl
@@ -61,10 +83,12 @@ export default function ModelloPage() {
   }, [modelloId])
 
   async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
     setUploading(true)
     try {
+      const needsConvert = rawFile.type === 'image/heic' || rawFile.type === 'image/heif' || rawFile.type === ''
+      const file = needsConvert ? await convertToJpeg(rawFile) : rawFile
       const fd = new FormData()
       fd.append('file', file)
       fd.append('modelloId', modelloId)

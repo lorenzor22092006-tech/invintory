@@ -3,6 +3,28 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+function convertToJpeg(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { URL.revokeObjectURL(url); resolve(file); return }
+      ctx.drawImage(img, 0, 0)
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url)
+        if (!blob) { resolve(file); return }
+        resolve(new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' }))
+      }, 'image/jpeg', 0.88)
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
 export default function NuovoModelloPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -23,9 +45,11 @@ export default function NuovoModelloPage() {
       .catch(() => {})
   }, [])
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const rawFile = e.target.files?.[0]
+    if (!rawFile) return
+    const needsConvert = rawFile.type === 'image/heic' || rawFile.type === 'image/heif' || rawFile.type === ''
+    const file = needsConvert ? await convertToJpeg(rawFile) : rawFile
     setFotoFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setFotoPreview(ev.target?.result as string)
