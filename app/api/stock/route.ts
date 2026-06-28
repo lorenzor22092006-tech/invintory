@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase, computeGiorniRimanenti, computeStatoScadenza } from '@/lib/supabase'
+import { supabase, computeGiorniRimanenti, computeStatoScadenza, computeScadenzaReso } from '@/lib/supabase'
 
 export async function GET() {
   try {
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
       numero_ordine: numeroOrdine,
       data_ordine: dataOrdine,
       prezzo_acquisto: prezzoAcquisto,
-      scadenza_reso: '',
+      scadenza_reso: computeScadenzaReso(dataOrdine),
       esito: 'In stock',
       id_modello: idModello,
       taglia,

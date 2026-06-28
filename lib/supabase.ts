@@ -21,6 +21,21 @@ export function computeGiorniRimanenti(scadenzaReso: string): number | null {
   return Math.round((date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+/** Calcola scadenza reso (GG/MM/AAAA) = data ordine + 90 giorni */
+export function computeScadenzaReso(dataOrdine: string): string {
+  if (!dataOrdine) return ''
+  const parts = dataOrdine.split('/')
+  if (parts.length !== 3) return ''
+  const [day, month, year] = parts
+  const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+  if (isNaN(date.getTime())) return ''
+  date.setDate(date.getDate() + 90)
+  const dd = String(date.getDate()).padStart(2, '0')
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const yyyy = date.getFullYear()
+  return `${dd}/${mm}/${yyyy}`
+}
+
 export function computeStatoScadenza(giorniRimanenti: number | null): string {
   if (giorniRimanenti === null) return ''
   if (giorniRimanenti < 0) return '🔴 SCADUTO'
