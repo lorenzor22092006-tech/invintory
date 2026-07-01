@@ -26,6 +26,7 @@ export default function HomePage() {
   const [sortAsc, setSortAsc] = useState(true)
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [mostraScaduti, setMostraScaduti] = useState(false)
 
   useEffect(() => {
     fetch('/api/stock')
@@ -51,6 +52,17 @@ export default function HomePage() {
       return sortAsc ? cmp : -cmp
     })
   }, [items, sortMode, sortAsc])
+
+  const scaduti = useMemo(() => {
+    const filtered = items.filter(
+      (item) =>
+        item.esito === 'In stock' &&
+        item.giorniRimanenti !== null &&
+        item.giorniRimanenti < 0
+    )
+    // dal meno scaduto (-1) al più scaduto
+    return [...filtered].sort((a, b) => (b.giorniRimanenti ?? 0) - (a.giorniRimanenti ?? 0))
+  }, [items])
 
   useEffect(() => {
     if (!search.trim()) {
@@ -538,6 +550,163 @@ export default function HomePage() {
             <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
+      </div>
+
+      {/* ARTICOLI SCADUTI */}
+      <div style={{ padding: '0 20px 36px' }}>
+        <button
+          type="button"
+          onClick={() => setMostraScaduti((v) => !v)}
+          style={{
+            width: '100%',
+            background: '#0B1F1A',
+            border: '1.5px solid #1B3A34',
+            borderRadius: 16,
+            padding: '16px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            cursor: 'pointer',
+          }}
+        >
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#EF4444" strokeWidth="2" />
+              <path d="M12 7v5l3 2" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <span style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700 }}>Articoli scaduti</span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              fontSize: 13,
+              fontWeight: 700,
+              color: '#EF4444',
+              background: 'rgba(239,68,68,0.12)',
+              borderRadius: 999,
+              padding: '2px 10px',
+              minWidth: 26,
+              textAlign: 'center',
+            }}
+          >
+            {loading ? '…' : scaduti.length}
+          </span>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            style={{ transform: mostraScaduti ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}
+          >
+            <path d="M6 9l6 6 6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {mostraScaduti && (
+          <div style={{ marginTop: 12 }}>
+            {loading ? (
+              <div style={{ color: '#64748B', fontSize: 14, padding: '8px 4px' }}>Caricamento…</div>
+            ) : scaduti.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 20px', color: '#64748B', fontSize: 14 }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                Nessun articolo scaduto
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {scaduti.map((item) => (
+                  <div
+                    key={item.sku}
+                    style={{
+                      background: '#0B1F1A',
+                      border: '1.5px solid rgba(239,68,68,0.4)',
+                      borderRadius: 14,
+                      padding: '14px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                      <div
+                        style={{
+                          minWidth: 44,
+                          height: 44,
+                          borderRadius: 10,
+                          background: '#102A24',
+                          border: '1px solid #1B3A34',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <span style={{ fontSize: 9, color: '#64748B', fontWeight: 600 }}>SKU</span>
+                        <span style={{ fontSize: 13, color: '#F8FAFC', fontWeight: 700 }}>{item.sku}</span>
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: '#F8FAFC',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {item.idModello || '—'}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                          {item.taglia ? `Taglia ${item.taglia}` : 'Taglia n.d.'} · Scaduto il{' '}
+                          {item.scadenzaReso}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)}
+                        title="Modifica prodotto"
+                        aria-label={`Modifica prodotto SKU ${item.sku}`}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          border: '1.5px solid #1B3A34',
+                          background: '#102A24',
+                          color: '#94A3B8',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                          <path
+                            d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <div style={{ textAlign: 'right', minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444' }}>
+                          {Math.abs(item.giorniRimanenti ?? 0)} gg fa
+                        </div>
+                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>scaduto</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* PRODOTTI IN SCADENZA */}
