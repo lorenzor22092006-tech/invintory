@@ -1,6 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import {
+  PageShell,
+  PageHeader,
+  SectionCard,
+  BottomSheet,
+  FormLabel,
+  FormInput,
+  ErrorBox,
+  PrimaryButton,
+  SecondaryButton,
+  IconButton,
+  EmptyState,
+  Skeleton,
+  colors,
+} from '@/components/ui'
 
 const ADMIN_PASSWORD = 'TESTAdiminchia1$'
 
@@ -17,121 +32,6 @@ type Sheet =
   | { tipo: 'edit-categoria'; nome: string }
   | { tipo: 'delete-categoria'; nome: string }
   | null
-
-// ── piccoli componenti UI ──────────────────────────────────────────────────
-
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 12,
-        fontWeight: 700,
-        color: '#94A3B8',
-        textTransform: 'uppercase',
-        letterSpacing: '0.05em',
-        marginBottom: 6,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function TextInput({
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-}: {
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  type?: string
-}) {
-  return (
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      step={type === 'number' ? '0.1' : undefined}
-      style={{
-        background: '#102A24',
-        border: '1.5px solid #1B3A34',
-        borderRadius: 12,
-        padding: '12px 14px',
-        color: '#F8FAFC',
-        fontSize: 15,
-        outline: 'none',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}
-    />
-  )
-}
-
-function ErrorBox({ msg }: { msg: string }) {
-  return (
-    <div
-      style={{
-        background: 'rgba(239,68,68,0.10)',
-        border: '1.5px solid #EF4444',
-        borderRadius: 12,
-        padding: '10px 14px',
-        color: '#EF4444',
-        fontSize: 14,
-        marginTop: 12,
-      }}
-    >
-      {msg}
-    </div>
-  )
-}
-
-function SheetHandle() {
-  return (
-    <div
-      style={{
-        width: 40,
-        height: 4,
-        background: '#1B3A34',
-        borderRadius: 2,
-        margin: '0 auto 20px',
-      }}
-    />
-  )
-}
-
-function SheetOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
-  return (
-    <>
-      <div
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50 }}
-      />
-      <div
-        style={{
-          position: 'fixed',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          bottom: 0,
-          width: '100%',
-          maxWidth: 430,
-          zIndex: 51,
-          background: '#0B1F1A',
-          borderRadius: '20px 20px 0 0',
-          border: '1.5px solid #1B3A34',
-          borderBottom: 'none',
-          padding: '20px 20px 44px',
-        }}
-      >
-        {children}
-      </div>
-    </>
-  )
-}
-
-// ── pagina principale ──────────────────────────────────────────────────────
 
 export default function TeamPage() {
   const [venditori, setVenditori] = useState<Venditore[]>([])
@@ -210,6 +110,12 @@ export default function TeamPage() {
     if (saving) return
     setSheet(null)
     setError(null)
+  }
+
+  function closePasswordGate() {
+    setPendingAction(null)
+    setPwInput('')
+    setPwError(null)
   }
 
   async function api(method: string, body: object) {
@@ -300,68 +206,54 @@ export default function TeamPage() {
     }
   }
 
-  return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: '#061311',
-        display: 'flex',
-        flexDirection: 'column',
-        maxWidth: 430,
-        margin: '0 auto',
-        paddingBottom: 90,
-      }}
-    >
-      {/* HEADER */}
-      <div style={{ padding: '52px 20px 24px' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', margin: 0 }}>Team</h1>
-      </div>
+  const addIcon = (
+    <span style={{ fontSize: 22, fontWeight: 300, lineHeight: 1 }}>+</span>
+  )
 
-      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+  const editIcon = (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+
+  const deleteIcon = (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="Team"
+        subtitle={loading ? undefined : `${venditori.length} venditori · ${categorie.length} categorie`}
+      />
+
+      <div className="inv-grid-2" style={{ alignItems: 'start' }}>
 
         {/* ── VENDITORI ───────────────────────────────────────────────────── */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-          {/* Header sezione */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC' }}>Venditori</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                {venditori.length} {venditori.length === 1 ? 'membro' : 'membri'}
-              </div>
-            </div>
-            <button
+        <SectionCard
+          title="Venditori"
+          subtitle={`${venditori.length} ${venditori.length === 1 ? 'membro' : 'membri'}`}
+          action={
+            <IconButton
+              variant="accent"
+              size={36}
+              label="Aggiungi venditore"
               onClick={() => requirePassword({ tipo: 'add-venditore' })}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: '#10B981',
-                border: 'none',
-                color: 'white',
-                fontSize: 22,
-                fontWeight: 300,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 12px rgba(16,185,129,0.3)',
-              }}
             >
-              +
-            </button>
-          </div>
-
-          {/* Lista venditori */}
+              {addIcon}
+            </IconButton>
+          }
+        >
           {loading ? (
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[1, 2].map((i) => (
-                <div key={i} style={{ height: 52, borderRadius: 10, background: '#102A24', opacity: 0.5 }} />
+                <Skeleton key={i} height={52} />
               ))}
             </div>
           ) : venditori.length === 0 ? (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', fontSize: 14 }}>
-              Nessun venditore ancora
-            </div>
+            <EmptyState icon="👥" message="Nessun venditore ancora" />
           ) : (
             <div>
               {venditori.map((v, i) => (
@@ -370,149 +262,99 @@ export default function TeamPage() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '13px 16px',
-                    borderBottom: i < venditori.length - 1 ? '1px solid #102A24' : 'none',
+                    padding: '13px 18px',
+                    borderBottom: i < venditori.length - 1 ? `1px solid ${colors.border}` : 'none',
                     gap: 12,
                   }}
                 >
-                  {/* Avatar */}
                   <div
                     style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 10,
-                      background: 'rgba(16,185,129,0.15)',
-                      border: '1px solid #1B3A34',
+                      width: 40,
+                      height: 40,
+                      borderRadius: 14,
+                      background: colors.accentSoft,
+                      border: `1px solid ${colors.borderStrong}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       fontSize: 15,
                       fontWeight: 800,
-                      color: '#10B981',
+                      color: colors.accentBright,
                       flexShrink: 0,
                     }}
                   >
                     {v.nome.charAt(0).toUpperCase()}
                   </div>
 
-                  {/* Nome + fee */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {v.nome}
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
                       Fee: {v.feePercentuale}%
                     </div>
                   </div>
 
-                  {/* Fee badge */}
                   <span
                     style={{
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      borderRadius: 8,
-                      padding: '3px 10px',
+                      background: colors.bgElevated,
+                      border: `1px solid ${colors.borderStrong}`,
+                      borderRadius: 999,
+                      padding: '4px 12px',
                       fontSize: 12,
                       fontWeight: 700,
-                      color: '#10B981',
+                      color: colors.accentBright,
                       flexShrink: 0,
                     }}
                   >
                     {v.feePercentuale}%
                   </span>
 
-                  {/* Modifica */}
-                  <button
+                  <IconButton
+                    size={34}
+                    label={`Modifica ${v.nome}`}
                     onClick={() => requirePassword({ tipo: 'edit-venditore', venditore: v })}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      color: '#94A3B8',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                    {editIcon}
+                  </IconButton>
 
-                  {/* Elimina */}
-                  <button
+                  <IconButton
+                    size={34}
+                    variant="danger"
+                    label={`Elimina ${v.nome}`}
                     onClick={() => requirePassword({ tipo: 'delete-venditore', nome: v.nome })}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: 'rgba(239,68,68,0.08)',
-                      border: '1px solid rgba(239,68,68,0.25)',
-                      color: '#EF4444',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                    {deleteIcon}
+                  </IconButton>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </SectionCard>
 
         {/* ── CATEGORIE ───────────────────────────────────────────────────── */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-          {/* Header sezione */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC' }}>Categorie prodotti</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                {categorie.length} {categorie.length === 1 ? 'categoria' : 'categorie'}
-              </div>
-            </div>
-            <button
+        <SectionCard
+          title="Categorie prodotti"
+          subtitle={`${categorie.length} ${categorie.length === 1 ? 'categoria' : 'categorie'}`}
+          action={
+            <IconButton
+              variant="accent"
+              size={36}
+              label="Aggiungi categoria"
               onClick={() => openSheet({ tipo: 'add-categoria' })}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: '#10B981',
-                border: 'none',
-                color: 'white',
-                fontSize: 22,
-                fontWeight: 300,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 12px rgba(16,185,129,0.3)',
-              }}
             >
-              +
-            </button>
-          </div>
-
-          {/* Lista categorie */}
+              {addIcon}
+            </IconButton>
+          }
+        >
           {loading ? (
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[1, 2, 3].map((i) => (
-                <div key={i} style={{ height: 44, borderRadius: 10, background: '#102A24', opacity: 0.5 }} />
+                <Skeleton key={i} height={44} />
               ))}
             </div>
           ) : categorie.length === 0 ? (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', fontSize: 14 }}>
-              Nessuna categoria ancora
-            </div>
+            <EmptyState icon="🏷️" message="Nessuna categoria ancora" />
           ) : (
             <div>
               {categorie.map((cat, i) => (
@@ -521,362 +363,277 @@ export default function TeamPage() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '12px 16px',
-                    borderBottom: i < categorie.length - 1 ? '1px solid #102A24' : 'none',
+                    padding: '12px 18px',
+                    borderBottom: i < categorie.length - 1 ? `1px solid ${colors.border}` : 'none',
                     gap: 12,
                   }}
                 >
-                  {/* Nome */}
-                  <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: '#F8FAFC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ flex: 1, fontSize: 14, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {cat}
                   </div>
 
-                  {/* Modifica */}
-                  <button
+                  <IconButton
+                    size={34}
+                    label={`Modifica ${cat}`}
                     onClick={() => openSheet({ tipo: 'edit-categoria', nome: cat })}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      color: '#94A3B8',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                    {editIcon}
+                  </IconButton>
 
-                  {/* Elimina */}
-                  <button
+                  <IconButton
+                    size={34}
+                    variant="danger"
+                    label={`Elimina ${cat}`}
                     onClick={() => openSheet({ tipo: 'delete-categoria', nome: cat })}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 9,
-                      background: 'rgba(239,68,68,0.08)',
-                      border: '1px solid rgba(239,68,68,0.25)',
-                      color: '#EF4444',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
+                    {deleteIcon}
+                  </IconButton>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </SectionCard>
 
       </div>
 
       {/* ── BOTTOM SHEET: aggiungi / modifica venditore ─────────────────── */}
-      {(sheet?.tipo === 'add-venditore' || sheet?.tipo === 'edit-venditore') && (
-        <SheetOverlay onClose={closeSheet}>
-          <SheetHandle />
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC', marginBottom: 4 }}>
-            {sheet.tipo === 'add-venditore' ? 'Nuovo venditore' : 'Modifica venditore'}
-          </div>
-          <div style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>
-            {sheet.tipo === 'add-venditore'
-              ? 'Aggiungi un membro al team'
-              : `Stai modificando ${sheet.venditore.nome}`}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div>
-              <Label>Nome *</Label>
-              <TextInput value={fNome} onChange={setFNome} placeholder="es. Lorenzo" />
+      <BottomSheet
+        open={sheet?.tipo === 'add-venditore' || sheet?.tipo === 'edit-venditore'}
+        onClose={closeSheet}
+      >
+        {sheet && (sheet.tipo === 'add-venditore' || sheet.tipo === 'edit-venditore') && (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 800, color: colors.text, marginBottom: 4 }}>
+              {sheet.tipo === 'add-venditore' ? 'Nuovo venditore' : 'Modifica venditore'}
             </div>
-            <div>
-              <Label>Fee % (commissione)</Label>
-              <TextInput value={fFee} onChange={setFFee} placeholder="es. 5" type="number" />
+            <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 20 }}>
+              {sheet.tipo === 'add-venditore'
+                ? 'Aggiungi un membro al team'
+                : `Stai modificando ${sheet.venditore.nome}`}
             </div>
-          </div>
 
-          {error && <ErrorBox msg={error} />}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <button
-              onClick={closeSheet}
-              disabled={saving}
-              style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
-            >
-              Annulla
-            </button>
-            <button
-              onClick={saveVenditore}
-              disabled={saving}
-              style={{ flex: 1, background: saving ? '#065F46' : '#10B981', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? 'Salvataggio…' : 'Salva'}
-            </button>
-          </div>
-        </SheetOverlay>
-      )}
-
-      {/* ── BOTTOM SHEET: conferma elimina venditore ────────────────────── */}
-      {sheet?.tipo === 'delete-venditore' && (
-        <SheetOverlay onClose={closeSheet}>
-          <SheetHandle />
-          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🗑️</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC', marginBottom: 8 }}>
-              Elimina venditore?
-            </div>
-            <div style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.5 }}>
-              Stai per eliminare{' '}
-              <strong style={{ color: '#F8FAFC' }}>{sheet.nome}</strong>{' '}
-              dal team. I dati delle vendite esistenti non verranno modificati.
-            </div>
-          </div>
-
-          {error && <ErrorBox msg={error} />}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button
-              onClick={closeSheet}
-              disabled={saving}
-              style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
-            >
-              Annulla
-            </button>
-            <button
-              onClick={deleteVenditore}
-              disabled={saving}
-              style={{ flex: 1, background: saving ? '#7F1D1D' : '#EF4444', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? 'Eliminando…' : 'Elimina'}
-            </button>
-          </div>
-        </SheetOverlay>
-      )}
-
-      {/* ── BOTTOM SHEET: aggiungi / modifica categoria ─────────────────── */}
-      {(sheet?.tipo === 'add-categoria' || sheet?.tipo === 'edit-categoria') && (
-        <SheetOverlay onClose={closeSheet}>
-          <SheetHandle />
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC', marginBottom: 4 }}>
-            {sheet.tipo === 'add-categoria' ? 'Nuova categoria' : 'Modifica categoria'}
-          </div>
-          <div style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>
-            {sheet.tipo === 'add-categoria'
-              ? 'Aggiungi una categoria al catalogo prodotti'
-              : `Stai modificando "${sheet.nome}"`}
-          </div>
-
-          <div>
-            <Label>Nome categoria *</Label>
-            <TextInput value={fCat} onChange={setFCat} placeholder="es. Sneakers" />
-          </div>
-
-          {error && <ErrorBox msg={error} />}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-            <button
-              onClick={closeSheet}
-              disabled={saving}
-              style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
-            >
-              Annulla
-            </button>
-            <button
-              onClick={saveCategoria}
-              disabled={saving}
-              style={{ flex: 1, background: saving ? '#065F46' : '#10B981', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.25)', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? 'Salvataggio…' : 'Salva'}
-            </button>
-          </div>
-        </SheetOverlay>
-      )}
-
-      {/* ── PASSWORD GATE (solo per azioni venditori) ───────────────────── */}
-      {pendingAction !== null && (
-        <>
-          <div
-            onClick={() => { setPendingAction(null); setPwInput(''); setPwError(null) }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 50 }}
-          />
-          <div
-            style={{
-              position: 'fixed',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              bottom: 0,
-              width: '100%',
-              maxWidth: 430,
-              zIndex: 51,
-              background: '#0B1F1A',
-              borderRadius: '20px 20px 0 0',
-              border: '1.5px solid #1B3A34',
-              borderBottom: 'none',
-              padding: '20px 20px 44px',
-            }}
-          >
-            <div style={{ width: 40, height: 4, background: '#1B3A34', borderRadius: 2, margin: '0 auto 20px' }} />
-
-            {/* Icona lucchetto */}
-            <div style={{ textAlign: 'center', marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  background: 'rgba(16,185,129,0.12)',
-                  border: '1.5px solid #1B3A34',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: 12,
-                }}
-              >
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="11" width="18" height="11" rx="2" stroke="#10B981" strokeWidth="2" />
-                  <path d="M7 11V7a5 5 0 0110 0v4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
-                  <circle cx="12" cy="16" r="1.5" fill="#10B981" />
-                </svg>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <FormLabel>Nome *</FormLabel>
+                <FormInput value={fNome} onChange={setFNome} placeholder="es. Lorenzo" />
               </div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC' }}>Accesso richiesto</div>
-              <div style={{ fontSize: 13, color: '#64748B', marginTop: 4 }}>
-                Inserisci la password admin per continuare
+              <div>
+                <FormLabel>Fee % (commissione)</FormLabel>
+                <FormInput value={fFee} onChange={setFFee} placeholder="es. 5" type="number" step="0.1" />
               </div>
             </div>
 
-            {/* Campo password */}
-            <div style={{ position: 'relative', marginTop: 16 }}>
-              <input
-                type={pwVisible ? 'text' : 'password'}
-                value={pwInput}
-                onChange={(e) => { setPwInput(e.target.value); setPwError(null) }}
-                onKeyDown={(e) => { if (e.key === 'Enter') confirmPassword() }}
-                placeholder="Password"
-                autoFocus
-                style={{
-                  background: '#102A24',
-                  border: `1.5px solid ${pwError ? '#EF4444' : '#1B3A34'}`,
-                  borderRadius: 12,
-                  padding: '12px 48px 12px 14px',
-                  color: '#F8FAFC',
-                  fontSize: 15,
-                  outline: 'none',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-              />
-              {/* Toggle visibilità */}
-              <button
-                onClick={() => setPwVisible((v) => !v)}
-                style={{
-                  position: 'absolute',
-                  right: 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: '#64748B',
-                  cursor: 'pointer',
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                {pwVisible ? (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                ) : (
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-                  </svg>
-                )}
-              </button>
-            </div>
-
-            {pwError && (
-              <div
-                style={{
-                  background: 'rgba(239,68,68,0.10)',
-                  border: '1.5px solid #EF4444',
-                  borderRadius: 12,
-                  padding: '10px 14px',
-                  color: '#EF4444',
-                  fontSize: 14,
-                  marginTop: 10,
-                }}
-              >
-                {pwError}
-              </div>
-            )}
+            {error && <div style={{ marginTop: 12 }}><ErrorBox message={error} /></div>}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-              <button
-                onClick={() => { setPendingAction(null); setPwInput(''); setPwError(null) }}
-                style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer' }}
-              >
+              <SecondaryButton onClick={closeSheet} disabled={saving} style={{ flex: 1 }}>
                 Annulla
-              </button>
-              <button
-                onClick={confirmPassword}
-                style={{ flex: 1, background: '#10B981', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', boxShadow: '0 4px 16px rgba(16,185,129,0.25)' }}
-              >
-                Conferma
-              </button>
+              </SecondaryButton>
+              <PrimaryButton onClick={saveVenditore} disabled={saving} style={{ flex: 1 }}>
+                {saving ? 'Salvataggio…' : 'Salva'}
+              </PrimaryButton>
             </div>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* ── BOTTOM SHEET: conferma elimina venditore ────────────────────── */}
+      <BottomSheet open={sheet?.tipo === 'delete-venditore'} onClose={closeSheet}>
+        {sheet?.tipo === 'delete-venditore' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🗑️</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: colors.text, marginBottom: 8 }}>
+                Elimina venditore?
+              </div>
+              <div style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.5 }}>
+                Stai per eliminare{' '}
+                <strong style={{ color: colors.text }}>{sheet.nome}</strong>{' '}
+                dal team. I dati delle vendite esistenti non verranno modificati.
+              </div>
+            </div>
+
+            {error && <ErrorBox message={error} />}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <SecondaryButton onClick={closeSheet} disabled={saving} style={{ flex: 1 }}>
+                Annulla
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={deleteVenditore}
+                disabled={saving}
+                style={{ flex: 1, background: colors.danger, boxShadow: 'none' }}
+              >
+                {saving ? 'Eliminando…' : 'Elimina'}
+              </PrimaryButton>
+            </div>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* ── BOTTOM SHEET: aggiungi / modifica categoria ─────────────────── */}
+      <BottomSheet
+        open={sheet?.tipo === 'add-categoria' || sheet?.tipo === 'edit-categoria'}
+        onClose={closeSheet}
+      >
+        {sheet && (sheet.tipo === 'add-categoria' || sheet.tipo === 'edit-categoria') && (
+          <>
+            <div style={{ fontSize: 17, fontWeight: 800, color: colors.text, marginBottom: 4 }}>
+              {sheet.tipo === 'add-categoria' ? 'Nuova categoria' : 'Modifica categoria'}
+            </div>
+            <div style={{ fontSize: 13, color: colors.textMuted, marginBottom: 20 }}>
+              {sheet.tipo === 'add-categoria'
+                ? 'Aggiungi una categoria al catalogo prodotti'
+                : `Stai modificando "${sheet.nome}"`}
+            </div>
+
+            <div>
+              <FormLabel>Nome categoria *</FormLabel>
+              <FormInput value={fCat} onChange={setFCat} placeholder="es. Sneakers" />
+            </div>
+
+            {error && <div style={{ marginTop: 12 }}><ErrorBox message={error} /></div>}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <SecondaryButton onClick={closeSheet} disabled={saving} style={{ flex: 1 }}>
+                Annulla
+              </SecondaryButton>
+              <PrimaryButton onClick={saveCategoria} disabled={saving} style={{ flex: 1 }}>
+                {saving ? 'Salvataggio…' : 'Salva'}
+              </PrimaryButton>
+            </div>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* ── PASSWORD GATE (solo per azioni venditori) ───────────────────── */}
+      <BottomSheet open={pendingAction !== null} onClose={closePasswordGate}>
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <div
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 18,
+              background: colors.accentSoft,
+              border: `1px solid ${colors.borderStrong}`,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 12,
+            }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="11" width="18" height="11" rx="2" stroke={colors.accentBright} strokeWidth="2" />
+              <path d="M7 11V7a5 5 0 0110 0v4" stroke={colors.accentBright} strokeWidth="2" strokeLinecap="round" />
+              <circle cx="12" cy="16" r="1.5" fill={colors.accentBright} />
+            </svg>
           </div>
-        </>
-      )}
+          <div style={{ fontSize: 17, fontWeight: 800, color: colors.text }}>Accesso richiesto</div>
+          <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>
+            Inserisci la password admin per continuare
+          </div>
+        </div>
+
+        <div style={{ position: 'relative', marginTop: 16 }}>
+          <input
+            type={pwVisible ? 'text' : 'password'}
+            value={pwInput}
+            onChange={(e) => { setPwInput(e.target.value); setPwError(null) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') confirmPassword() }}
+            placeholder="Password"
+            autoFocus
+            style={{
+              width: '100%',
+              background: colors.bgInput,
+              border: `1px solid ${pwError ? colors.danger : colors.border}`,
+              borderRadius: 18,
+              padding: '13px 48px 13px 16px',
+              color: colors.text,
+              fontSize: 15,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setPwVisible((v) => !v)}
+            style={{
+              position: 'absolute',
+              right: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              color: colors.textMuted,
+              cursor: 'pointer',
+              padding: 4,
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            {pwVisible ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19M1 1l22 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {pwError && (
+          <div style={{ marginTop: 10 }}>
+            <ErrorBox message={pwError} />
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <SecondaryButton onClick={closePasswordGate} style={{ flex: 1 }}>
+            Annulla
+          </SecondaryButton>
+          <PrimaryButton onClick={confirmPassword} style={{ flex: 1 }}>
+            Conferma
+          </PrimaryButton>
+        </div>
+      </BottomSheet>
 
       {/* ── BOTTOM SHEET: conferma elimina categoria ────────────────────── */}
-      {sheet?.tipo === 'delete-categoria' && (
-        <SheetOverlay onClose={closeSheet}>
-          <SheetHandle />
-          <div style={{ textAlign: 'center', marginBottom: 20 }}>
-            <div style={{ fontSize: 36, marginBottom: 10 }}>🗑️</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#F8FAFC', marginBottom: 8 }}>
-              Elimina categoria?
+      <BottomSheet open={sheet?.tipo === 'delete-categoria'} onClose={closeSheet}>
+        {sheet?.tipo === 'delete-categoria' && (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 36, marginBottom: 10 }}>🗑️</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: colors.text, marginBottom: 8 }}>
+                Elimina categoria?
+              </div>
+              <div style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 1.5 }}>
+                Stai per eliminare la categoria{' '}
+                <strong style={{ color: colors.text }}>&ldquo;{sheet.nome}&rdquo;</strong>.
+                I prodotti già catalogati non verranno modificati.
+              </div>
             </div>
-            <div style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.5 }}>
-              Stai per eliminare la categoria{' '}
-              <strong style={{ color: '#F8FAFC' }}>&ldquo;{sheet.nome}&rdquo;</strong>.
-              I prodotti già catalogati non verranno modificati.
+
+            {error && <ErrorBox message={error} />}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+              <SecondaryButton onClick={closeSheet} disabled={saving} style={{ flex: 1 }}>
+                Annulla
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={deleteCategoria}
+                disabled={saving}
+                style={{ flex: 1, background: colors.danger, boxShadow: 'none' }}
+              >
+                {saving ? 'Eliminando…' : 'Elimina'}
+              </PrimaryButton>
             </div>
-          </div>
+          </>
+        )}
+      </BottomSheet>
 
-          {error && <ErrorBox msg={error} />}
-
-          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <button
-              onClick={closeSheet}
-              disabled={saving}
-              style={{ flex: 1, background: '#102A24', border: '1.5px solid #1B3A34', borderRadius: 14, color: '#F8FAFC', fontSize: 15, fontWeight: 700, padding: '14px', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}
-            >
-              Annulla
-            </button>
-            <button
-              onClick={deleteCategoria}
-              disabled={saving}
-              style={{ flex: 1, background: saving ? '#7F1D1D' : '#EF4444', border: 'none', borderRadius: 14, color: 'white', fontSize: 15, fontWeight: 700, padding: '14px', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-            >
-              {saving ? 'Eliminando…' : 'Elimina'}
-            </button>
-          </div>
-        </SheetOverlay>
-      )}
-
-    </div>
+    </PageShell>
   )
 }

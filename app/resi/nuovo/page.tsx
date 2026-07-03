@@ -2,6 +2,18 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  PrimaryButton,
+  FormLabel,
+  ErrorBox,
+  SectionCard,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius } from '@/lib/theme'
 
 interface RisultatoSku {
   sku: string
@@ -68,98 +80,97 @@ export default function RegistraResoPage() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    flex: 1,
-    background: '#061311',
-    border: '1.5px solid #1B3A34',
-    borderRadius: 12,
-    color: '#F8FAFC',
-    fontSize: 15,
-    padding: '12px 14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
   if (risultati) {
     const ok = risultati.filter((r) => r.ok)
     const ko = risultati.filter((r) => !r.ok)
     return (
-      <div style={{ minHeight: '100dvh', background: '#061311', maxWidth: 430, margin: '0 auto', padding: '20px 20px 100px', boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            style={{ width: 40, height: 40, borderRadius: 12, border: '1.5px solid #1B3A34', background: '#0B1F1A', color: '#F8FAFC', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Riepilogo reso</h1>
-        </div>
+      <PageShell style={S.pagePadForm}>
+        <PageHeader
+          title="Riepilogo reso"
+          back={<BackButton onClick={() => router.push('/')} />}
+        />
 
         {ok.length > 0 && (
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>{ok.length} capi registrati come reso</span>
-            </div>
+          <SectionCard title={`${ok.length} capi registrati come reso`}>
             {ok.map((r, i) => (
-              <div key={r.sku} style={{ padding: '11px 16px', borderBottom: i < ok.length - 1 ? '1px solid #102A24' : 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#22C55E', background: 'rgba(34,197,94,0.1)', padding: '3px 8px', borderRadius: 6 }}>SKU {r.sku}</span>
-                <span style={{ fontSize: 13, color: '#94A3B8' }}>→ Reso</span>
+              <div
+                key={r.sku}
+                style={{
+                  padding: '11px 16px',
+                  borderBottom: i < ok.length - 1 ? `1px solid ${colors.border}` : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: colors.success,
+                    background: 'rgba(34,197,94,0.1)',
+                    padding: '3px 8px',
+                    borderRadius: radius.sm,
+                  }}
+                >
+                  SKU {r.sku}
+                </span>
+                <span style={{ fontSize: 13, color: colors.textSecondary }}>→ Reso</span>
               </div>
             ))}
-          </div>
+          </SectionCard>
         )}
 
         {ko.length > 0 && (
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>{ko.length} SKU non elaborati</span>
-            </div>
-            {ko.map((r, i) => (
-              <div key={r.sku} style={{ padding: '11px 16px', borderBottom: i < ko.length - 1 ? '1px solid #102A24' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '3px 8px', borderRadius: 6 }}>SKU {r.sku}</span>
-                <span style={{ fontSize: 13, color: '#64748B' }}>{r.errore}</span>
-              </div>
-            ))}
+          <div style={{ marginTop: ok.length > 0 ? 12 : 0, marginBottom: 20 }}>
+            <SectionCard title={`${ko.length} SKU non elaborati`}>
+              {ko.map((r, i) => (
+                <div
+                  key={r.sku}
+                  style={{
+                    padding: '11px 16px',
+                    borderBottom: i < ko.length - 1 ? `1px solid ${colors.border}` : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: colors.danger,
+                      background: colors.dangerSoft,
+                      padding: '3px 8px',
+                      borderRadius: radius.sm,
+                    }}
+                  >
+                    SKU {r.sku}
+                  </span>
+                  <span style={{ fontSize: 13, color: colors.textMuted }}>{r.errore}</span>
+                </div>
+              ))}
+            </SectionCard>
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          style={{ width: '100%', background: '#10B981', border: 'none', borderRadius: 16, color: 'white', fontSize: 16, fontWeight: 700, padding: '16px', cursor: 'pointer', boxShadow: '0 4px 24px rgba(16,185,129,0.25)' }}
-        >
+        <PrimaryButton onClick={() => router.push('/')} fullWidth>
           TORNA ALLA HOME
-        </button>
-      </div>
+        </PrimaryButton>
+      </PageShell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#061311', maxWidth: 430, margin: '0 auto', padding: '20px 20px 100px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{ width: 40, height: 40, borderRadius: 12, border: '1.5px solid #1B3A34', background: '#0B1F1A', color: '#F8FAFC', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Registra reso</h1>
-      </div>
+    <PageShell style={S.pagePadForm}>
+      <PageHeader
+        title="Registra reso"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {/* INPUT SKU */}
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#94A3B8', marginBottom: 6 }}>
-            Aggiungi SKU
-          </label>
+          <FormLabel>Aggiungi SKU</FormLabel>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               ref={inputRef}
@@ -167,56 +178,87 @@ export default function RegistraResoPage() {
               inputMode="numeric"
               placeholder="es. 159"
               value={input}
-              onChange={(e) => { setInput(e.target.value); setError(null) }}
+              onChange={(e) => {
+                setInput(e.target.value)
+                setError(null)
+              }}
               onKeyDown={handleKeyDown}
-              style={inputStyle}
+              style={{ ...S.input, flex: 1 }}
             />
-            <button
-              type="button"
-              onClick={aggiungiSku}
-              style={{ background: '#10B981', border: 'none', borderRadius: 12, color: 'white', fontSize: 15, fontWeight: 700, padding: '12px 18px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-            >
+            <PrimaryButton onClick={aggiungiSku} style={{ whiteSpace: 'nowrap', padding: '12px 18px' }}>
               + Aggiungi
-            </button>
+            </PrimaryButton>
           </div>
-          <p style={{ fontSize: 12, color: '#64748B', margin: '6px 0 0' }}>Premi Invio o tocca "+ Aggiungi" per ogni SKU</p>
+          <p style={{ fontSize: 12, color: colors.textMuted, margin: '6px 0 0' }}>
+            Premi Invio o tocca &quot;+ Aggiungi&quot; per ogni SKU
+          </p>
         </div>
 
-        {/* LISTA SKU AGGIUNTI */}
         {skus.length > 0 && (
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #1B3A34', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#F8FAFC' }}>SKU da rendere</span>
-              <span style={{ fontSize: 12, color: '#64748B' }}>{skus.length} capi</span>
-            </div>
+          <SectionCard
+            title="SKU da rendere"
+            subtitle={`${skus.length} capi`}
+          >
             {skus.map((sku, i) => (
-              <div key={sku} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', borderBottom: i < skus.length - 1 ? '1px solid #102A24' : 'none' }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#F8FAFC', background: '#102A24', padding: '4px 10px', borderRadius: 8 }}>SKU {sku}</span>
+              <div
+                key={sku}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '11px 16px',
+                  borderBottom: i < skus.length - 1 ? `1px solid ${colors.border}` : 'none',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: colors.text,
+                    background: colors.bgElevated,
+                    padding: '4px 10px',
+                    borderRadius: radius.sm,
+                  }}
+                >
+                  SKU {sku}
+                </span>
                 <button
                   type="button"
                   onClick={() => rimuoviSku(sku)}
-                  style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #1B3A34', background: 'transparent', color: '#EF4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: radius.sm,
+                    border: `1px solid ${colors.border}`,
+                    background: 'transparent',
+                    color: colors.danger,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 16,
+                  }}
                 >
                   ×
                 </button>
               </div>
             ))}
-          </div>
+          </SectionCard>
         )}
 
-        {error && <p style={{ color: '#EF4444', fontSize: 14, margin: 0 }}>{error}</p>}
+        {error && <ErrorBox message={error} />}
 
         {skus.length > 0 && (
-          <button
-            type="button"
+          <PrimaryButton
             disabled={submitting}
             onClick={registra}
-            style={{ width: '100%', background: submitting ? '#059669' : '#10B981', border: 'none', borderRadius: 16, color: 'white', fontSize: 16, fontWeight: 700, padding: '16px', cursor: submitting ? 'wait' : 'pointer', boxShadow: '0 4px 24px rgba(16,185,129,0.25)', letterSpacing: '0.04em' }}
+            fullWidth
+            style={{ letterSpacing: '0.04em' }}
           >
             {submitting ? 'Registrazione…' : `REGISTRA RESO (${skus.length} capi)`}
-          </button>
+          </PrimaryButton>
         )}
       </div>
-    </div>
+    </PageShell>
   )
 }

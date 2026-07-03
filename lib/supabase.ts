@@ -1,10 +1,33 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+let _client: SupabaseClient | null = null
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: { persistSession: false },
+function initSupabase(): SupabaseClient {
+  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error(
+      'Supabase non configurato: imposta SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY in .env.local'
+    )
+  }
+  _client = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false },
+  })
+  return _client
+}
+
+export function getSupabase(): SupabaseClient {
+  if (!_client) return initSupabase()
+  return _client
+}
+
+/** Client lazy — non crasha al import se mancano le env (demo mode OK) */
+export const supabase: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabase()
+    const value = Reflect.get(client, prop, client)
+    return typeof value === 'function' ? value.bind(client) : value
+  },
 })
 
 /** Calcola giorni rimanenti da data formato GG/MM/AAAA */
@@ -45,4 +68,8 @@ export function computeStatoScadenza(giorniRimanenti: number | null): string {
 
 export function parseEuro(val: string): number {
   return parseFloat(String(val).replace('€', '').replace(',', '.').trim()) || 0
+}
+
+export function hasSupabaseConfig(): boolean {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
 }

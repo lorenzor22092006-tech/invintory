@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { colors, radius, shadow, S } from '@/lib/theme'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -76,25 +77,24 @@ export default function VitoButton() {
           40% { transform: translateY(-5px); opacity: 1; }
         }
         @keyframes vito-pulse {
-          0%, 100% { box-shadow: 0 4px 18px rgba(16,185,129,0.45); }
-          50% { box-shadow: 0 4px 28px rgba(16,185,129,0.75); }
+          0%, 100% { box-shadow: 0 4px 24px rgba(6, 182, 212, 0.35); }
+          50% { box-shadow: 0 6px 32px rgba(6, 182, 212, 0.55); }
         }
       `}</style>
 
-      {/* Pallino floating */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           aria-label="Apri Vito AI"
           style={{
             position: 'fixed',
-            top: 13,
-            right: 16,
-            width: 40,
-            height: 40,
+            bottom: 'var(--inv-fab-bottom)',
+            right: 20,
+            width: 44,
+            height: 44,
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            border: '1.5px solid rgba(255,255,255,0.15)',
+            background: `linear-gradient(135deg, ${colors.accentBright} 0%, ${colors.accent} 100%)`,
+            border: `1px solid rgba(255,255,255,0.12)`,
             cursor: 'pointer',
             zIndex: 45,
             display: 'flex',
@@ -103,81 +103,48 @@ export default function VitoButton() {
             animation: 'vito-pulse 2.5s ease-in-out infinite',
           }}
         >
-          {/* Sparkle / AI icon */}
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"
-              fill="white"
-              opacity="0.9"
-            />
-            <path
-              d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"
-              fill="white"
-              opacity="0.7"
-            />
-            <path
-              d="M5 17l.5 1.5L7 19l-1.5.5L5 21l-.5-1.5L3 19l1.5-.5L5 17z"
-              fill="white"
-              opacity="0.6"
-            />
+            <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" fill={colors.onAccent} opacity="0.95" />
+            <path d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z" fill={colors.onAccent} opacity="0.75" />
           </svg>
         </button>
       )}
 
-      {/* Chat overlay */}
       {isOpen && (
         <>
-          {/* Backdrop */}
-          <div
-            onClick={() => setIsOpen(false)}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.6)',
-              zIndex: 60,
-            }}
-          />
+          <div onClick={() => setIsOpen(false)} style={S.overlay} />
 
-          {/* Chat panel */}
           <div
             style={{
+              ...S.sheet,
               position: 'fixed',
-              bottom: 0,
-              left: '50%',
-              transform: 'translateX(-50%)',
+              maxWidth: 420,
               width: '100%',
-              maxWidth: 430,
-              height: '84dvh',
-              zIndex: 61,
-              background: '#0B1F1A',
-              borderRadius: '22px 22px 0 0',
-              border: '1.5px solid #1B3A34',
-              borderBottom: 'none',
+              maxHeight: 'min(640px, 85dvh)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
+              padding: 0,
+              zIndex: 61,
             }}
           >
-            {/* Header */}
             <div
               style={{
-                padding: '14px 16px 12px',
-                borderBottom: '1px solid #1B3A34',
+                padding: '16px 18px 14px',
+                borderBottom: `1px solid ${colors.border}`,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
                 flexShrink: 0,
-                background: '#0B1F1A',
               }}
             >
-              {/* Avatar Vito */}
               <div
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 13,
-                  background: 'linear-gradient(135deg, rgba(16,185,129,0.25) 0%, rgba(5,150,105,0.15) 100%)',
-                  border: '1.5px solid #10B981',
+                  width: 42,
+                  height: 42,
+                  borderRadius: radius.md,
+                  background: colors.accentSoft,
+                  border: `1px solid ${colors.borderStrong}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -185,55 +152,24 @@ export default function VitoButton() {
                 }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"
-                    fill="#10B981"
-                    opacity="0.9"
-                  />
-                  <path
-                    d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z"
-                    fill="#10B981"
-                    opacity="0.7"
-                  />
+                  <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" fill={colors.accentBright} />
                 </svg>
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: '#F8FAFC' }}>Vito</div>
-                <div style={{ fontSize: 11, color: '#10B981', fontWeight: 600, marginTop: 1 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: colors.text }}>Vito</div>
+                <div style={{ fontSize: 11, color: colors.accentBright, fontWeight: 700, marginTop: 2 }}>
                   Operatore AI · Rubinos Sellers
                 </div>
               </div>
 
-              {/* Pulsante chiudi */}
-              <button
-                onClick={() => setIsOpen(false)}
-                style={{
-                  background: '#102A24',
-                  border: '1px solid #1B3A34',
-                  borderRadius: 10,
-                  width: 32,
-                  height: 32,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94A3B8',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
-              >
+              <button onClick={() => setIsOpen(false)} className="inv-icon-btn inv-btn-glass" style={S.iconBtn}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M18 6L6 18M6 6l12 12"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                  />
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
 
-            {/* Messaggi */}
             <div
               style={{
                 flex: 1,
@@ -254,27 +190,22 @@ export default function VitoButton() {
                     alignItems: 'flex-end',
                   }}
                 >
-                  {/* Mini avatar Vito per messaggi suoi */}
                   {msg.role === 'assistant' && (
                     <div
                       style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 8,
-                        background: 'rgba(16,185,129,0.2)',
-                        border: '1px solid #10B981',
+                        width: 28,
+                        height: 28,
+                        borderRadius: 10,
+                        background: colors.accentSoft,
+                        border: `1px solid ${colors.borderStrong}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0,
-                        marginBottom: 2,
                       }}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"
-                          fill="#10B981"
-                        />
+                        <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" fill={colors.accentBright} />
                       </svg>
                     </div>
                   )}
@@ -282,14 +213,11 @@ export default function VitoButton() {
                   <div
                     style={{
                       maxWidth: '76%',
-                      padding: '10px 13px',
-                      borderRadius:
-                        msg.role === 'user'
-                          ? '16px 16px 5px 16px'
-                          : '16px 16px 16px 5px',
-                      background: msg.role === 'user' ? '#10B981' : '#102A24',
-                      border: msg.role === 'user' ? 'none' : '1px solid #1B3A34',
-                      color: '#F8FAFC',
+                      padding: '11px 14px',
+                      borderRadius: msg.role === 'user' ? '20px 20px 6px 20px' : '20px 20px 20px 6px',
+                      background: msg.role === 'user' ? colors.accentBright : colors.bgElevated,
+                      border: msg.role === 'user' ? 'none' : `1px solid ${colors.border}`,
+                      color: msg.role === 'user' ? colors.onAccent : colors.text,
                       fontSize: 14,
                       lineHeight: 1.55,
                       whiteSpace: 'pre-wrap',
@@ -301,45 +229,32 @@ export default function VitoButton() {
                 </div>
               ))}
 
-              {/* Typing indicator */}
               {loading && (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-start',
-                    gap: 8,
-                    alignItems: 'flex-end',
-                  }}
-                >
+                <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
                   <div
                     style={{
-                      width: 26,
-                      height: 26,
-                      borderRadius: 8,
-                      background: 'rgba(16,185,129,0.2)',
-                      border: '1px solid #10B981',
+                      width: 28,
+                      height: 28,
+                      borderRadius: 10,
+                      background: colors.accentSoft,
+                      border: `1px solid ${colors.borderStrong}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flexShrink: 0,
                     }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"
-                        fill="#10B981"
-                      />
+                      <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z" fill={colors.accentBright} />
                     </svg>
                   </div>
                   <div
                     style={{
-                      padding: '11px 15px',
-                      borderRadius: '16px 16px 16px 5px',
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
+                      padding: '12px 16px',
+                      borderRadius: '20px 20px 20px 6px',
+                      background: colors.bgElevated,
+                      border: `1px solid ${colors.border}`,
                       display: 'flex',
                       gap: 5,
-                      alignItems: 'center',
                     }}
                   >
                     {[0, 1, 2].map((j) => (
@@ -349,7 +264,7 @@ export default function VitoButton() {
                           width: 6,
                           height: 6,
                           borderRadius: '50%',
-                          background: '#10B981',
+                          background: colors.accentBright,
                           animation: `vito-bounce 1.3s ${j * 0.2}s ease-in-out infinite`,
                         }}
                       />
@@ -361,15 +276,13 @@ export default function VitoButton() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input */}
             <div
               style={{
-                padding: '10px 12px 30px',
-                borderTop: '1px solid #1B3A34',
+                padding: '12px 18px 18px',
+                borderTop: `1px solid ${colors.border}`,
                 display: 'flex',
-                gap: 9,
+                gap: 10,
                 flexShrink: 0,
-                background: '#0B1F1A',
               }}
             >
               <input
@@ -385,14 +298,9 @@ export default function VitoButton() {
                 placeholder="Scrivi a Vito…"
                 disabled={loading}
                 style={{
+                  ...S.input,
                   flex: 1,
-                  background: '#102A24',
-                  border: '1.5px solid #1B3A34',
-                  borderRadius: 12,
-                  padding: '11px 14px',
-                  color: '#F8FAFC',
-                  fontSize: 15,
-                  outline: 'none',
+                  borderRadius: radius.pill,
                   opacity: loading ? 0.6 : 1,
                   minWidth: 0,
                 }}
@@ -401,36 +309,16 @@ export default function VitoButton() {
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
                 style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background:
-                    input.trim() && !loading ? '#10B981' : '#102A24',
-                  border:
-                    input.trim() && !loading
-                      ? 'none'
-                      : '1.5px solid #1B3A34',
-                  color: input.trim() && !loading ? 'white' : '#64748B',
+                  ...S.iconBtn,
+                  background: input.trim() && !loading ? colors.accentBright : colors.bgElevated,
+                  color: input.trim() && !loading ? colors.onAccent : colors.textMuted,
+                  border: input.trim() && !loading ? 'none' : `1px solid ${colors.border}`,
                   cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow:
-                    input.trim() && !loading
-                      ? '0 2px 12px rgba(16,185,129,0.35)'
-                      : 'none',
-                  transition: 'background 0.15s, box-shadow 0.15s',
+                  boxShadow: input.trim() && !loading ? shadow.accent : 'none',
                 }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
             </div>

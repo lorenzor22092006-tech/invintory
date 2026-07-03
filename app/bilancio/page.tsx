@@ -3,6 +3,22 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { KpiDashboard, Vendita } from '@/lib/types'
+import {
+  PageShell,
+  PageHeader,
+  StatCard,
+  SectionCard,
+  EmptyState,
+  Skeleton,
+  SkuBadge,
+  Chip,
+  ChipRow,
+  Card,
+  ErrorBox,
+  colors,
+  S,
+  euro,
+} from '@/components/ui'
 
 type Period = 'settimane' | 'mesi' | 'anno'
 type Metric = 'fatturato' | 'netto'
@@ -57,27 +73,27 @@ function RankingList({
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              padding: '11px 16px',
-              borderBottom: idx < items.length - 1 ? '1px solid #102A24' : 'none',
+              padding: '11px 18px',
+              borderBottom: idx < items.length - 1 ? `1px solid ${colors.border}` : 'none',
             }}
           >
             <span style={{ fontSize: 16, width: 24, textAlign: 'center', flexShrink: 0 }}>
               {MEDAL[idx] ?? (
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#64748B' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: colors.textMuted }}>
                   {idx + 1}
                 </span>
               )}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {item.cat}
               </div>
               <div
                 style={{
                   marginTop: 4,
                   height: 4,
-                  borderRadius: 2,
-                  background: '#1B3A34',
+                  borderRadius: 999,
+                  background: colors.bgElevated,
                   overflow: 'hidden',
                 }}
               >
@@ -85,13 +101,13 @@ function RankingList({
                   style={{
                     width: `${pct}%`,
                     height: '100%',
-                    background: '#10B981',
-                    borderRadius: 2,
+                    background: `linear-gradient(90deg, ${colors.accentBright}, ${colors.accent})`,
+                    borderRadius: 999,
                   }}
                 />
               </div>
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#10B981', flexShrink: 0 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: colors.accentBright, flexShrink: 0 }}>
               {format(val)}
             </span>
           </div>
@@ -209,11 +225,6 @@ function getVenditePerPeriod(vendite: Vendita[], period: Period): Vendita[] {
   })
 }
 
-function euro(n: number) {
-  const safe = Number.isFinite(n) ? n : 0
-  return '€' + safe.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
 function BarChart({ bars, metric }: { bars: ChartBar[]; metric: Metric }) {
   const values = bars.map((b) => Math.max(metric === 'fatturato' ? b.fatturato : b.netto, 0))
   const max = Math.max(...values, 1)
@@ -238,8 +249,10 @@ function BarChart({ bars, metric }: { bars: ChartBar[]; metric: Metric }) {
                 style={{
                   width: '100%',
                   height: val > 0 ? `${Math.max((val / max) * 100, 5)}%` : '2px',
-                  background: val > 0 ? '#10B981' : '#1B3A34',
-                  borderRadius: '3px 3px 0 0',
+                  background: val > 0
+                    ? `linear-gradient(180deg, ${colors.accentBright}, ${colors.accent})`
+                    : colors.bgElevated,
+                  borderRadius: '6px 6px 0 0',
                 }}
               />
             </div>
@@ -249,10 +262,43 @@ function BarChart({ bars, metric }: { bars: ChartBar[]; metric: Metric }) {
       <div style={{ display: 'flex', gap: 3, marginTop: 6 }}>
         {bars.map((bar, i) => (
           <div key={i} style={{ flex: 1, textAlign: 'center' }}>
-            <span style={{ fontSize: 9, color: '#64748B', display: 'block' }}>{bar.label}</span>
+            <span style={{ fontSize: 9, color: colors.textMuted, display: 'block' }}>{bar.label}</span>
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  valueColor,
+  bold,
+  last,
+}: {
+  label: string
+  value: string | number
+  valueColor?: string
+  bold?: boolean
+  last?: boolean
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: bold ? '14px 18px' : '12px 18px',
+        borderBottom: last ? 'none' : `1px solid ${colors.border}`,
+      }}
+    >
+      <span style={{ fontSize: bold ? 15 : 14, fontWeight: bold ? 800 : 400, color: bold ? colors.text : colors.textSecondary }}>
+        {label}
+      </span>
+      <span style={{ fontSize: bold ? 15 : 14, fontWeight: bold ? 800 : 600, color: valueColor ?? colors.text }}>
+        {value}
+      </span>
     </div>
   )
 }
@@ -267,20 +313,17 @@ export default function Bilancio() {
   const [metric, setMetric] = useState<Metric>('fatturato')
 
   useEffect(() => {
-    // Fetch critici (KPI + vendite) — separati dal taglie che è opzionale
     Promise.all([
       fetch('/api/dashboard').then((r) => r.json()),
       fetch('/api/vendite').then((r) => r.json()),
     ])
       .then(([kpiData, venditeData]) => {
-        // Valida che kpiData sia un vero KpiDashboard e non un oggetto {error}
         setKpi(typeof kpiData?.fatturato === 'number' ? kpiData : null)
         setVendite(Array.isArray(venditeData) ? venditeData : [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
 
-    // Fetch opzionale per classifiche categorie — non blocca la pagina se fallisce
     fetch('/api/taglie')
       .then((r) => r.json())
       .then((data) => {
@@ -304,186 +347,163 @@ export default function Bilancio() {
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: '100dvh',
-          background: '#061311',
-          maxWidth: 430,
-          margin: '0 auto',
-          padding: '52px 20px 90px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-        }}
-      >
-        {[80, 180, 200, 160].map((h, i) => (
-          <div key={i} style={{ height: h, borderRadius: 14, background: '#0B1F1A', opacity: 0.5 }} />
-        ))}
-      </div>
+      <PageShell>
+        <PageHeader title="Bilancio" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {[80, 180, 200, 160].map((h, i) => (
+            <Skeleton key={i} height={h} />
+          ))}
+        </div>
+      </PageShell>
     )
   }
 
   if (!kpi) {
     return (
-      <div style={{ minHeight: '100dvh', background: '#061311', maxWidth: 430, margin: '0 auto', padding: '52px 20px', textAlign: 'center', color: '#EF4444', fontSize: 14 }}>
-        Errore caricamento dati
-      </div>
+      <PageShell>
+        <PageHeader title="Bilancio" />
+        <ErrorBox message="Errore caricamento dati" />
+      </PageShell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#061311', display: 'flex', flexDirection: 'column', maxWidth: 430, margin: '0 auto', paddingBottom: 90 }}>
+    <PageShell>
+      <PageHeader title="Bilancio" subtitle="Panoramica finanziaria e vendite" />
 
-      {/* HEADER */}
-      <div style={{ padding: '52px 20px 20px' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', margin: 0 }}>Bilancio</h1>
-      </div>
-
-      <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* KPI GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Fatturato</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#F8FAFC' }}>{euro(kpi.fatturato)}</div>
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>{kpi.totaleVenduti} vendite</div>
-          </div>
-
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #10B981', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Guadagno netto</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#10B981' }}>{euro(kpi.guadagnoNetto)}</div>
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>dopo fee</div>
-          </div>
-
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>In stock</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#F8FAFC' }}>{kpi.totaleStock}</div>
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>{euro(kpi.rimanenze)}</div>
-          </div>
-
-          {/* SCADENZE — cliccabile */}
-          <div
-            onClick={() => router.push('/bilancio/scadenze')}
-            style={{
-              background: '#0B1F1A',
-              border: `1.5px solid ${kpi.scadenzeImminenti > 0 ? '#F59E0B' : '#1B3A34'}`,
-              borderRadius: 14,
-              padding: '14px 16px',
-              cursor: 'pointer',
-              position: 'relative',
-            }}
-          >
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Scadenze</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: kpi.scadenzeImminenti > 0 ? '#F59E0B' : '#F8FAFC' }}>
-              {kpi.scadenzeImminenti}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748B', marginTop: 3 }}>
-              {kpi.scaduti > 0 ? `${kpi.scaduti} scaduti` : 'entro 15gg'}
-            </div>
+        <div className="inv-grid-4">
+          <StatCard
+            label="Fatturato"
+            value={euro(kpi.fatturato)}
+            hint={`${kpi.totaleVenduti} vendite`}
+          />
+          <StatCard
+            label="Guadagno netto"
+            value={euro(kpi.guadagnoNetto)}
+            hint="dopo fee"
+            highlight={colors.accentBright}
+          />
+          <StatCard
+            label="In stock"
+            value={kpi.totaleStock}
+            hint={euro(kpi.rimanenze)}
+          />
+          <div style={{ position: 'relative' }}>
+            <StatCard
+              label="Scadenze"
+              value={kpi.scadenzeImminenti}
+              hint={kpi.scaduti > 0 ? `${kpi.scaduti} scaduti` : 'entro 15gg'}
+              highlight={kpi.scadenzeImminenti > 0 ? colors.warning : undefined}
+              onClick={() => router.push('/bilancio/scadenze')}
+            />
             <svg
               width="14"
               height="14"
               viewBox="0 0 24 24"
               fill="none"
-              style={{ position: 'absolute', top: 14, right: 14, opacity: 0.4 }}
+              style={{ position: 'absolute', top: 16, right: 16, opacity: 0.45, pointerEvents: 'none' }}
             >
-              <path d="M9 18l6-6-6-6" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M9 18l6-6-6-6" stroke={colors.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
         </div>
 
         {/* GRAFICO */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Andamento vendite</div>
-            <div style={{ display: 'flex', background: '#102A24', borderRadius: 8, overflow: 'hidden', border: '1px solid #1B3A34' }}>
-              {(['fatturato', 'netto'] as Metric[]).map((m) => (
+        <SectionCard
+          title="Andamento vendite"
+          action={
+            <ChipRow>
+              <Chip label="Fatturato" active={metric === 'fatturato'} onClick={() => setMetric('fatturato')} />
+              <Chip label="Netto" active={metric === 'netto'} onClick={() => setMetric('netto')} />
+            </ChipRow>
+          }
+        >
+          <div style={{ padding: '16px 18px' }}>
+            <div
+              style={{
+                display: 'flex',
+                background: colors.bgMuted,
+                borderRadius: 999,
+                padding: 4,
+                marginBottom: 16,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              {(
+                [
+                  ['settimane', 'Settimane'],
+                  ['mesi', 'Mesi'],
+                  ['anno', 'Anno'],
+                ] as [Period, string][]
+              ).map(([p, label]) => (
                 <button
-                  key={m}
-                  onClick={() => setMetric(m)}
+                  key={p}
+                  type="button"
+                  onClick={() => setPeriod(p)}
+                  className={period === p ? 'inv-btn-glass' : undefined}
                   style={{
-                    padding: '5px 10px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    background: metric === m ? '#10B981' : 'transparent',
-                    color: metric === m ? 'white' : '#64748B',
-                    border: 'none',
+                    flex: 1,
+                    padding: '8px 0',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: period === p ? colors.accentBright : colors.textMuted,
+                    ...(period === p ? {} : { background: 'transparent', border: 'none' }),
                     cursor: 'pointer',
                   }}
                 >
-                  {m === 'fatturato' ? 'Fatturato' : 'Netto'}
+                  {label}
                 </button>
               ))}
             </div>
-          </div>
 
-          <div style={{ display: 'flex', background: '#102A24', borderRadius: 10, padding: 3, marginBottom: 16, border: '1px solid #1B3A34' }}>
-            {(
-              [
-                ['settimane', 'Settimane'],
-                ['mesi', 'Mesi'],
-                ['anno', 'Anno'],
-              ] as [Period, string][]
-            ).map(([p, label]) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                style={{
-                  flex: 1,
-                  padding: '7px 0',
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  background: period === p ? '#0B1F1A' : 'transparent',
-                  color: period === p ? '#F8FAFC' : '#64748B',
-                  border: period === p ? '1px solid #1B3A34' : 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+            <BarChart bars={chartData} metric={metric} />
 
-          <BarChart bars={chartData} metric={metric} />
-
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #1B3A34', display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontSize: 11, color: '#64748B' }}>{metric === 'fatturato' ? 'Fatturato' : 'Netto'} periodo</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC', marginTop: 2 }}>{euro(chartTotal)}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: '#64748B' }}>Vendite</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#F8FAFC', marginTop: 2 }}>{chartCount}</div>
+            <div
+              style={{
+                marginTop: 14,
+                paddingTop: 12,
+                borderTop: `1px solid ${colors.border}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 11, color: colors.textMuted }}>{metric === 'fatturato' ? 'Fatturato' : 'Netto'} periodo</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: colors.text, marginTop: 2 }}>{euro(chartTotal)}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: colors.textMuted }}>Vendite</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: colors.text, marginTop: 2 }}>{chartCount}</div>
+              </div>
             </div>
           </div>
-        </div>
+        </SectionCard>
 
         {/* VENDITE DEL PERIODO */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>
-              Vendite nel periodo
-            </div>
-            <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-              {period === 'settimane' && 'Ultime 8 settimane'}
-              {period === 'mesi' && 'Ultimi 12 mesi'}
-              {period === 'anno' && 'Tutte le vendite'}
-            </div>
-          </div>
-
+        <SectionCard
+          title="Vendite nel periodo"
+          subtitle={
+            period === 'settimane'
+              ? 'Ultime 8 settimane'
+              : period === 'mesi'
+                ? 'Ultimi 12 mesi'
+                : 'Tutte le vendite'
+          }
+        >
           {venditePerPeriod.length === 0 ? (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748B', fontSize: 14 }}>
-              Nessuna vendita in questo periodo
-            </div>
+            <EmptyState icon="📊" message="Nessuna vendita in questo periodo" />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {venditePerPeriod.map((v, i) => (
                 <div
                   key={i}
                   style={{
-                    padding: '12px 16px',
-                    borderBottom: i < venditePerPeriod.length - 1 ? '1px solid #102A24' : 'none',
+                    padding: '12px 18px',
+                    borderBottom: i < venditePerPeriod.length - 1 ? `1px solid ${colors.border}` : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -491,147 +511,120 @@ export default function Bilancio() {
                   }}
                 >
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
-                      <span style={{
-                        background: 'rgba(16,185,129,0.12)',
-                        border: '1px solid #10B981',
-                        borderRadius: 5,
-                        padding: '1px 7px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: '#10B981',
-                        flexShrink: 0,
-                      }}>
-                        {v.sku}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <SkuBadge sku={v.sku} />
                       {v.taglia && (
-                        <span style={{ fontSize: 11, color: '#64748B' }}>{v.taglia}</span>
+                        <span style={{ fontSize: 11, color: colors.textMuted }}>{v.taglia}</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {v.idModello || '—'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                       {v.dataVendita}
                       {v.venditore ? ` · ${v.venditore}` : ''}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#10B981' }}>{euro(v.prezzoVendita)}</div>
-                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>netto {euro(v.guadagnoNetto)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: colors.accentBright }}>{euro(v.prezzoVendita)}</div>
+                    <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>netto {euro(v.guadagnoNetto)}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
+        </SectionCard>
+
+        {/* RIEPILOGO FINANZIARIO + STOCK side by side */}
+        <div className="inv-grid-2" style={{ alignItems: 'start' }}>
+          <SectionCard title="Riepilogo finanziario">
+            <SummaryRow label="Fatturato totale" value={euro(kpi.fatturato)} />
+            <SummaryRow label="Costo acquisti" value={`−${euro(kpi.costoAcquisti)}`} valueColor={colors.danger} />
+            <SummaryRow label="Guadagno lordo" value={euro(kpi.guadagnoLordo)} />
+            <SummaryRow label="Fee venditori" value={`−${euro(kpi.feeTotali)}`} valueColor={colors.danger} />
+            <SummaryRow label="Guadagno netto" value={euro(kpi.guadagnoNetto)} valueColor={colors.accentBright} bold last />
+          </SectionCard>
+
+          <SectionCard title="Stock">
+            {[
+              { label: 'Totale ordinati', value: kpi.totaleStock + kpi.totaleVenduti + kpi.totaleResi },
+              { label: 'In stock', value: kpi.totaleStock },
+              { label: 'Venduti', value: kpi.totaleVenduti },
+              { label: 'Resi', value: kpi.totaleResi },
+            ].map((row, i, arr) => (
+              <SummaryRow key={i} label={row.label} value={row.value} last={i === arr.length - 1} />
+            ))}
+          </SectionCard>
         </div>
 
-        {/* RIEPILOGO FINANZIARIO */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Riepilogo finanziario</div>
-          </div>
-          {[
-            { label: 'Fatturato totale', value: euro(kpi.fatturato), color: '#F8FAFC' },
-            { label: 'Costo acquisti', value: `−${euro(kpi.costoAcquisti)}`, color: '#EF4444' },
-            { label: 'Guadagno lordo', value: euro(kpi.guadagnoLordo), color: '#F8FAFC' },
-            { label: 'Fee venditori', value: `−${euro(kpi.feeTotali)}`, color: '#EF4444' },
-          ].map((row, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #102A24' }}>
-              <span style={{ fontSize: 14, color: '#94A3B8' }}>{row.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: row.color }}>{row.value}</span>
-            </div>
-          ))}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px' }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#F8FAFC' }}>Guadagno netto</span>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#10B981' }}>{euro(kpi.guadagnoNetto)}</span>
-          </div>
-        </div>
-
-        {/* CLASSIFICA CATEGORIE — PIÙ VENDUTE */}
-        {topVendute.length > 0 && (
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Categorie più vendute</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Per numero di pezzi venduti</div>
-            </div>
-            <RankingList
-              items={topVendute}
-              valueKey="count"
-              format={(n) => `${n} pz`}
-            />
+        {/* CLASSIFICA CATEGORIE — side by side */}
+        {(topVendute.length > 0 || topMargine.length > 0) && (
+          <div className="inv-grid-2" style={{ alignItems: 'start' }}>
+            {topVendute.length > 0 && (
+              <SectionCard title="Categorie più vendute" subtitle="Per numero di pezzi venduti">
+                <RankingList
+                  items={topVendute}
+                  valueKey="count"
+                  format={(n) => `${n} pz`}
+                />
+              </SectionCard>
+            )}
+            {topMargine.length > 0 && (
+              <SectionCard title="Categorie più redditizie" subtitle="Per guadagno netto totale">
+                <RankingList
+                  items={topMargine}
+                  valueKey="netto"
+                  format={(n) => '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                />
+              </SectionCard>
+            )}
           </div>
         )}
-
-        {/* CLASSIFICA CATEGORIE — PIÙ MARGINE */}
-        {topMargine.length > 0 && (
-          <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Categorie più redditizie</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Per guadagno netto totale</div>
-            </div>
-            <RankingList
-              items={topMargine}
-              valueKey="netto"
-              format={(n) => '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            />
-          </div>
-        )}
-
-        {/* RIEPILOGO STOCK */}
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, overflow: 'hidden' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid #1B3A34' }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Stock</div>
-          </div>
-          {[
-            { label: 'Totale ordinati', value: kpi.totaleStock + kpi.totaleVenduti + kpi.totaleResi },
-            { label: 'In stock', value: kpi.totaleStock },
-            { label: 'Venduti', value: kpi.totaleVenduti },
-            { label: 'Resi', value: kpi.totaleResi },
-          ].map((row, i, arr) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: i < arr.length - 1 ? '1px solid #102A24' : 'none' }}>
-              <span style={{ fontSize: 14, color: '#94A3B8' }}>{row.label}</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
 
         {/* GESTIONE PAGAMENTI VENDITORI */}
-        <a
-          href="/bilancio/venditori"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            background: '#0B1F1A',
-            border: '1.5px solid #1B3A34',
-            borderRadius: 14,
-            padding: '16px',
-            textDecoration: 'none',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="9" cy="7" r="4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+        <a href="/bilancio/venditori" style={{ textDecoration: 'none' }}>
+          <Card
+            style={{
+              padding: '16px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  background: colors.accentSoft,
+                  border: `1px solid ${colors.borderStrong}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke={colors.accentBright} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <circle cx="9" cy="7" r="4" stroke={colors.accentBright} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke={colors.accentBright} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke={colors.accentBright} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: colors.text }}>Gestione pagamenti venditori</div>
+                <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>Traccia fee dovute e pagamenti effettuati</div>
+              </div>
             </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#F8FAFC' }}>Gestione pagamenti venditori</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>Traccia fee dovute e pagamenti effettuati</div>
-            </div>
-          </div>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M9 18l6-6-6-6" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </Card>
         </a>
 
       </div>
-    </div>
+    </PageShell>
   )
 }

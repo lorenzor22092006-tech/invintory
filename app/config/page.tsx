@@ -2,6 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { Venditore } from '@/lib/types'
+import {
+  PageShell,
+  PageHeader,
+  PrimaryButton,
+  FormLabel,
+  FormInput,
+  SectionCard,
+  Skeleton,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius } from '@/lib/theme'
 
 export default function Config() {
   const [venditori, setVenditori] = useState<Venditore[]>([])
@@ -62,84 +74,113 @@ export default function Config() {
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-400">Caricamento...</p>
+  if (loading) {
+    return (
+      <PageShell style={S.pagePadForm}>
+        <Skeleton height={40} style={{ marginBottom: 20 }} />
+        <Skeleton height={200} style={{ marginBottom: 16 }} />
+        <Skeleton height={200} />
+      </PageShell>
+    )
+  }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-gray-900">Configurazione</h1>
-      </div>
+    <PageShell style={S.pagePadForm}>
+      <PageHeader title="Configurazione" subtitle="Venditori e categorie prodotto" />
 
       {messaggio && (
-        <div className="bg-green-50 text-green-700 text-sm px-4 py-2 rounded-lg mb-4">
+        <div
+          style={{
+            background: colors.accentSoft,
+            border: `1px solid ${colors.accent}`,
+            borderRadius: radius.md,
+            padding: '12px 14px',
+            color: colors.accentBright,
+            fontSize: 14,
+            marginBottom: 16,
+          }}
+        >
           {messaggio}
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-4">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-medium text-gray-900">Venditori</h2>
-        </div>
-        <div className="divide-y divide-gray-50">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SectionCard title="Venditori">
           {venditori.map((v, i) => (
-            <div key={i} className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-gray-900">{v.nome}</span>
-              <span className="text-gray-500">Fee {v.feePercentuale}%</span>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                borderBottom: i < venditori.length - 1 ? `1px solid ${colors.border}` : 'none',
+                fontSize: 14,
+              }}
+            >
+              <span style={{ color: colors.text, fontWeight: 600 }}>{v.nome}</span>
+              <span style={{ color: colors.textMuted }}>Fee {v.feePercentuale}%</span>
             </div>
           ))}
-        </div>
-        <div className="px-4 py-3 border-t border-gray-100 space-y-2">
-          <input
-            type="text"
-            placeholder="Nome venditore"
-            value={nuovoVenditore.nome}
-            onChange={(e) => setNuovoVenditore({ ...nuovoVenditore, nome: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-          />
-          <input
-            type="number"
-            placeholder="Fee % (es. 15)"
-            value={nuovoVenditore.fee}
-            onChange={(e) => setNuovoVenditore({ ...nuovoVenditore, fee: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-          />
-          <button
-            onClick={aggiungiVenditore}
-            className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm"
-          >
-            + Aggiungi venditore
-          </button>
-        </div>
-      </div>
+          <div style={{ padding: '16px', borderTop: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <FormLabel>Nome venditore</FormLabel>
+            <FormInput
+              value={nuovoVenditore.nome}
+              onChange={(v) => setNuovoVenditore({ ...nuovoVenditore, nome: v })}
+              placeholder="Nome venditore"
+            />
+            <FormLabel>Fee % (es. 15)</FormLabel>
+            <FormInput
+              value={nuovoVenditore.fee}
+              onChange={(v) => setNuovoVenditore({ ...nuovoVenditore, fee: v })}
+              placeholder="Fee % (es. 15)"
+            />
+            <PrimaryButton onClick={aggiungiVenditore} fullWidth>
+              + Aggiungi venditore
+            </PrimaryButton>
+          </div>
+        </SectionCard>
 
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-medium text-gray-900">Categorie prodotto</h2>
-        </div>
-        <div className="divide-y divide-gray-50">
+        <SectionCard title="Categorie prodotto">
           {categorie.map((c, i) => (
-            <div key={i} className="flex justify-between px-4 py-3 text-sm">
-              <span className="text-gray-900">{c}</span>
-              <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full">Attiva</span>
+            <div
+              key={i}
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 16px',
+                borderBottom: i < categorie.length - 1 ? `1px solid ${colors.border}` : 'none',
+                fontSize: 14,
+              }}
+            >
+              <span style={{ color: colors.text, fontWeight: 600 }}>{c}</span>
+              <span
+                style={{
+                  background: colors.accentSoft,
+                  color: colors.accentBright,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '3px 10px',
+                  borderRadius: radius.pill,
+                }}
+              >
+                Attiva
+              </span>
             </div>
           ))}
-        </div>
-        <div className="px-4 py-3 border-t border-gray-100 space-y-2">
-          <input
-            type="text"
-            placeholder="Nome categoria (es. Giacca)"
-            value={nuovaCategoria}
-            onChange={(e) => setNuovaCategoria(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-          />
-          <button
-            onClick={aggiungiCategoria}
-            className="w-full bg-gray-900 text-white py-2 rounded-lg text-sm"
-          >
-            + Aggiungi categoria
-          </button>
-        </div>
+          <div style={{ padding: '16px', borderTop: `1px solid ${colors.border}`, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <FormLabel>Nome categoria</FormLabel>
+            <FormInput
+              value={nuovaCategoria}
+              onChange={setNuovaCategoria}
+              placeholder="Nome categoria (es. Giacca)"
+            />
+            <PrimaryButton onClick={aggiungiCategoria} fullWidth>
+              + Aggiungi categoria
+            </PrimaryButton>
+          </div>
+        </SectionCard>
       </div>
-    </div>
+    </PageShell>
   )
 }

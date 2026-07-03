@@ -2,6 +2,17 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  Skeleton,
+  EmptyState,
+  ErrorBox,
+  colors,
+  S,
+  euro,
+} from '@/components/ui'
 
 interface VenditoreStats {
   nome: string
@@ -47,37 +58,23 @@ export default function PagamentiVenditoriPage() {
       })
   }, [])
 
-  const fmt = (n: number) =>
-    '€' + n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
   return (
-    <div style={{ minHeight: '100dvh', background: '#061311', maxWidth: 430, margin: '0 auto', padding: '20px 20px 100px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{ width: 40, height: 40, borderRadius: 12, border: '1.5px solid #1B3A34', background: '#0B1F1A', color: '#F8FAFC', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-          aria-label="Indietro"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#F8FAFC', margin: 0 }}>Pagamenti venditori</h1>
-      </div>
+    <PageShell style={S.pagePadForm}>
+      <PageHeader
+        title="Pagamenti venditori"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {[1, 2].map((i) => (
-            <div key={i} style={{ height: 90, borderRadius: 14, background: '#0B1F1A', animation: 'pulse 1.5s infinite' }} />
+            <Skeleton key={i} height={90} />
           ))}
         </div>
       ) : error ? (
-        <p style={{ color: '#EF4444', fontSize: 14 }}>{error}</p>
+        <ErrorBox message={error} />
       ) : venditori.length === 0 ? (
-        <div style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, padding: '24px 16px', textAlign: 'center' }}>
-          <p style={{ color: '#64748B', fontSize: 14, margin: 0 }}>Nessun venditore configurato</p>
-        </div>
+        <EmptyState icon="👤" message="Nessun venditore configurato" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {venditori.map((v) => (
@@ -85,32 +82,42 @@ export default function PagamentiVenditoriPage() {
               key={v.nome}
               type="button"
               onClick={() => router.push(`/bilancio/venditori/${encodeURIComponent(v.nome)}`)}
-              style={{ width: '100%', background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 14, padding: '14px 16px', cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box' }}
+              style={{
+                ...S.listRow,
+                width: '100%',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxSizing: 'border-box',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+              }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#F8FAFC' }}>{v.nome}</span>
+                <span style={{ fontSize: 16, fontWeight: 700, color: colors.text }}>{v.nome}</span>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M9 18l6-6-6-6" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginBottom: 2 }}>Fee totale</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#F8FAFC' }}>{fmt(v.feeDovuta)}</div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Fee totale</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: colors.text }}>{euro(v.feeDovuta)}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginBottom: 2 }}>Già pagato</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#22C55E' }}>{fmt(v.giaPagato)}</div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Già pagato</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: colors.success }}>{euro(v.giaPagato)}</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 11, color: '#64748B', marginBottom: 2 }}>Da pagare</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: v.daPagare > 0 ? '#F59E0B' : '#10B981' }}>{fmt(v.daPagare)}</div>
+                  <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 2 }}>Da pagare</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: v.daPagare > 0 ? colors.warning : colors.accent }}>
+                    {euro(v.daPagare)}
+                  </div>
                 </div>
               </div>
             </button>
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

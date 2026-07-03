@@ -2,32 +2,40 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { CSSProperties } from 'react'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  PrimaryButton,
+  SecondaryButton,
+  FormLabel,
+  FormInput,
+  ErrorBox,
+  Skeleton,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius, shadow } from '@/lib/theme'
 
-const triggerBase: React.CSSProperties = {
-  width: '100%',
+const triggerBase: CSSProperties = {
+  ...S.input,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 10,
-  background: '#061311',
-  border: '1.5px solid #1B3A34',
-  borderRadius: 12,
-  color: '#F8FAFC',
-  fontSize: 15,
-  padding: '12px 14px',
   cursor: 'pointer',
   textAlign: 'left',
-  boxSizing: 'border-box',
 }
 
-const listPanel: React.CSSProperties = {
+const listPanel: CSSProperties = {
   marginTop: 8,
   maxHeight: 240,
   overflowY: 'auto',
-  borderRadius: 12,
-  border: '1.5px solid #1B3A34',
-  background: '#0B1F1A',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+  borderRadius: radius.md,
+  border: `1px solid ${colors.border}`,
+  background: colors.bgCard,
+  boxShadow: shadow.card,
 }
 
 export default function RegistraProdottoPage() {
@@ -79,34 +87,14 @@ export default function RegistraProdottoPage() {
     return list
   }, [taglie, taglia])
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    background: '#061311',
-    border: '1.5px solid #1B3A34',
-    borderRadius: 12,
-    color: '#F8FAFC',
-    fontSize: 15,
-    padding: '12px 14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#94A3B8',
-    marginBottom: 6,
-  }
-
-  const optionRow = (selected: boolean): React.CSSProperties => ({
+  const optionRow = (selected: boolean): CSSProperties => ({
     width: '100%',
     textAlign: 'left',
     padding: '12px 14px',
     border: 'none',
-    borderBottom: '1px solid #102A24',
-    background: selected ? 'rgba(16, 185, 129, 0.18)' : 'transparent',
-    color: '#F8FAFC',
+    borderBottom: `1px solid ${colors.border}`,
+    background: selected ? colors.accentSoft : 'transparent',
+    color: colors.text,
     fontSize: 15,
     cursor: 'pointer',
   })
@@ -147,64 +135,24 @@ export default function RegistraProdottoPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: '#061311',
-        maxWidth: 430,
-        margin: '0 auto',
-        padding: '20px 20px 100px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            border: '1.5px solid #1B3A34',
-            background: '#0B1F1A',
-            color: '#F8FAFC',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Indietro"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M15 18l-6-6 6-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: '#F8FAFC',
-            margin: 0,
-          }}
-        >
-          Registra prodotto
-        </h1>
-      </div>
+    <PageShell style={S.pagePadForm}>
+      <PageHeader
+        title="Registra prodotto"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
       {loading ? (
-        <p style={{ color: '#64748B', fontSize: 14 }}>Caricamento…</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Skeleton height={52} />
+          <Skeleton height={52} />
+          <Skeleton height={52} />
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <label style={labelStyle}>SKU</label>
+            <FormLabel>SKU</FormLabel>
             <input
-              style={inputStyle}
+              style={S.input}
               value={sku}
               onChange={(e) => setSku(e.target.value)}
               placeholder="es. 152"
@@ -212,50 +160,35 @@ export default function RegistraProdottoPage() {
             />
           </div>
           <div>
-            <label style={labelStyle}>N. ordine</label>
-            <input
-              style={inputStyle}
-              value={numeroOrdine}
-              onChange={(e) => setNumeroOrdine(e.target.value)}
-              placeholder="es. PO-098-…"
-            />
+            <FormLabel>N. ordine</FormLabel>
+            <FormInput value={numeroOrdine} onChange={setNumeroOrdine} placeholder="es. PO-098-…" />
           </div>
           <div>
-            <label style={labelStyle}>Data ordine</label>
-            <input
-              style={inputStyle}
-              value={dataOrdine}
-              onChange={(e) => setDataOrdine(e.target.value)}
-              placeholder="GG/MM/AAAA"
-            />
+            <FormLabel>Data ordine</FormLabel>
+            <FormInput value={dataOrdine} onChange={setDataOrdine} placeholder="GG/MM/AAAA" />
           </div>
           <div>
-            <label style={labelStyle}>Prezzo acquisto</label>
-            <input
-              style={inputStyle}
-              value={prezzoAcquisto}
-              onChange={(e) => setPrezzoAcquisto(e.target.value)}
-              placeholder="es. € 7,08"
-            />
+            <FormLabel>Prezzo acquisto</FormLabel>
+            <FormInput value={prezzoAcquisto} onChange={setPrezzoAcquisto} placeholder="es. € 7,08" />
           </div>
 
           <div>
-            <label style={labelStyle}>ID modello</label>
+            <FormLabel>ID modello</FormLabel>
             <button
               type="button"
               onClick={() => setOpenPicker((p) => (p === 'idModello' ? null : 'idModello'))}
               style={{
                 ...triggerBase,
-                borderColor: openPicker === 'idModello' ? '#10B981' : '#1B3A34',
+                borderColor: openPicker === 'idModello' ? colors.accent : colors.border,
               }}
             >
-              <span style={{ color: idModello ? '#F8FAFC' : '#64748B' }}>
+              <span style={{ color: idModello ? colors.text : colors.textMuted }}>
                 {idModello || 'Seleziona ID modello…'}
               </span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path
                   d="M6 9l6 6 6-6"
-                  stroke="#10B981"
+                  stroke={colors.accent}
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -265,7 +198,7 @@ export default function RegistraProdottoPage() {
             {openPicker === 'idModello' ? (
               <div style={listPanel} role="listbox">
                 {idOptions.length === 0 ? (
-                  <div style={{ padding: 14, color: '#64748B', fontSize: 14 }}>
+                  <div style={{ padding: 14, color: colors.textMuted, fontSize: 14 }}>
                     Nessun modello in TAGLIE_STOCK
                   </div>
                 ) : (
@@ -278,7 +211,7 @@ export default function RegistraProdottoPage() {
                         style={{
                           ...optionRow(sel),
                           borderBottom:
-                            idx === idOptions.length - 1 ? 'none' : '1px solid #102A24',
+                            idx === idOptions.length - 1 ? 'none' : `1px solid ${colors.border}`,
                         }}
                         onClick={() => {
                           setIdModello(opt)
@@ -295,22 +228,22 @@ export default function RegistraProdottoPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Taglia</label>
+            <FormLabel>Taglia</FormLabel>
             <button
               type="button"
               onClick={() => setOpenPicker((p) => (p === 'taglia' ? null : 'taglia'))}
               style={{
                 ...triggerBase,
-                borderColor: openPicker === 'taglia' ? '#10B981' : '#1B3A34',
+                borderColor: openPicker === 'taglia' ? colors.accent : colors.border,
               }}
             >
-              <span style={{ color: taglia ? '#F8FAFC' : '#64748B' }}>
+              <span style={{ color: taglia ? colors.text : colors.textMuted }}>
                 {taglia || 'Seleziona taglia…'}
               </span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path
                   d="M6 9l6 6 6-6"
-                  stroke="#22C55E"
+                  stroke={colors.success}
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -320,7 +253,7 @@ export default function RegistraProdottoPage() {
             {openPicker === 'taglia' ? (
               <div style={listPanel} role="listbox">
                 {tagliaOptions.length === 0 ? (
-                  <div style={{ padding: 14, color: '#64748B', fontSize: 14 }}>
+                  <div style={{ padding: 14, color: colors.textMuted, fontSize: 14 }}>
                     Nessuna taglia disponibile
                   </div>
                 ) : (
@@ -333,7 +266,7 @@ export default function RegistraProdottoPage() {
                         style={{
                           ...optionRow(sel),
                           borderBottom:
-                            idx === tagliaOptions.length - 1 ? 'none' : '1px solid #102A24',
+                            idx === tagliaOptions.length - 1 ? 'none' : `1px solid ${colors.border}`,
                         }}
                         onClick={() => {
                           setTaglia(opt)
@@ -349,56 +282,32 @@ export default function RegistraProdottoPage() {
             ) : null}
           </div>
 
-          <p style={{ fontSize: 12, color: '#64748B', margin: 0, lineHeight: 1.45 }}>
+          <p style={{ fontSize: 12, color: colors.textMuted, margin: 0, lineHeight: 1.45 }}>
             Scadenza reso, giorni e stato vengono calcolati dal foglio se hai formule in quelle
-            colonne. Esito impostato su <strong style={{ color: '#10B981' }}>In stock</strong>.
+            colonne. Esito impostato su <strong style={{ color: colors.accent }}>In stock</strong>.
           </p>
 
-          {error ? <p style={{ color: '#EF4444', fontSize: 14, margin: 0 }}>{error}</p> : null}
+          {error ? <ErrorBox message={error} /> : null}
 
-          <button
-            type="button"
+          <PrimaryButton
             disabled={submitting}
             onClick={registra}
-            style={{
-              marginTop: 8,
-              width: '100%',
-              background: submitting ? '#059669' : '#10B981',
-              border: 'none',
-              borderRadius: 16,
-              color: 'white',
-              fontSize: 16,
-              fontWeight: 700,
-              padding: '16px',
-              cursor: submitting ? 'wait' : 'pointer',
-              boxShadow: '0 4px 24px rgba(16,185,129,0.25)',
-              letterSpacing: '0.04em',
-            }}
+            fullWidth
+            style={{ marginTop: 8, letterSpacing: '0.04em' }}
           >
             {submitting ? 'Registrazione…' : 'REGISTRA'}
-          </button>
+          </PrimaryButton>
 
-          <button
-            type="button"
+          <SecondaryButton
             disabled={submitting}
             onClick={() => router.back()}
-            style={{
-              width: '100%',
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 16,
-              color: '#94A3B8',
-              fontSize: 16,
-              fontWeight: 700,
-              padding: '14px',
-              cursor: submitting ? 'default' : 'pointer',
-              letterSpacing: '0.04em',
-            }}
+            fullWidth
+            style={{ letterSpacing: '0.04em' }}
           >
             ANNULLA
-          </button>
+          </SecondaryButton>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }

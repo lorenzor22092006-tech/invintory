@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabase, parseEuro } from '@/lib/supabase'
+import { isDemoMode } from '@/lib/demo'
+import { demoVendite } from '@/lib/demo-data'
 
 export async function GET() {
+  if (isDemoMode()) {
+    return NextResponse.json(demoVendite)
+  }
+
   try {
     const { data, error } = await supabase
       .from('vendite')

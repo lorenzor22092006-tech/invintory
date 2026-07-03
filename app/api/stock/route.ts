@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server'
-import { supabase, computeGiorniRimanenti, computeStatoScadenza, computeScadenzaReso } from '@/lib/supabase'
+import { supabase, computeGiorniRimanenti, computeStatoScadenza, computeScadenzaReso, hasSupabaseConfig } from '@/lib/supabase'
+import { isDemoMode } from '@/lib/demo'
+import { demoStockResponse } from '@/lib/demo-data'
 
 export async function GET() {
+  if (isDemoMode()) {
+    return NextResponse.json({ ...demoStockResponse, demo: true })
+  }
+
+  if (!hasSupabaseConfig()) {
+    return NextResponse.json(
+      {
+        error: 'Manca .env.local: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY',
+        code: 'MISSING_ENV',
+        items: [],
+      },
+      { status: 503 }
+    )
+  }
+
   try {
     const { data, error } = await supabase
       .from('stock')

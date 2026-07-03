@@ -3,19 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
+    "dev:clean": "sh -c 'for p in $(lsof -ti :3000 2>/dev/null); do kill -9 $p 2>/dev/null; done; next dev --hostname 0.0.0.0'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@paper-design/shaders": "^0.0.76",
     "@supabase/supabase-js": "^2.108.2",
+    "clsx": "^2.1.1",
     "googleapis": "^171.4.0",
+    "lucide-react": "^1.23.0",
+    "motion": "^12.42.2",
     "next": "16.2.6",
     "openai": "^6.37.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "swr": "^2.4.1"
+    "swr": "^2.4.1",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -4,20 +4,307 @@
   padding: 0;
 }
 
+:root {
+  /* Responsive tokens — inline styles reference these via var() */
+  --inv-pad-x: 32px;
+  --inv-pad-y: 28px;
+  --inv-title-size: 32px;
+  --inv-nav-height: 72px;
+  --inv-main-pad-bottom: 48px;
+  --inv-fab-bottom: 28px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --inv-pad-x: 16px;
+    --inv-pad-y: 18px;
+    --inv-title-size: 24px;
+    --inv-nav-height: 60px;
+    /* space for floating bottom nav */
+    --inv-main-pad-bottom: calc(104px + env(safe-area-inset-bottom, 0px));
+    /* floating assistant button sits above the bottom nav */
+    --inv-fab-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 html, body {
-  background-color: #061311;
+  background-color: #050810;
   color: #F8FAFC;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
 }
 
 a, button {
   -webkit-tap-highlight-color: transparent;
 }
 
-input {
+input, select, textarea {
   -webkit-appearance: none;
   appearance: none;
+}
+
+@keyframes inv-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.75; }
+}
+
+/* Living background orbs (Figma design) */
+@keyframes inv-orb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate(30px, -40px) scale(1.18); opacity: 0.72; }
+}
+@keyframes inv-orb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.42; }
+  50% { transform: translate(-25px, 35px) scale(1.12); opacity: 0.6; }
+}
+@keyframes inv-orb3 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+  50% { transform: translate(20px, 20px) scale(1.1); opacity: 0.5; }
+}
+@keyframes inv-pulse-glow {
+  0%, 100% { box-shadow:
+    inset 0 3px 10px rgba(255,255,255,0.48), inset 0 -5px 12px rgba(0,0,0,0.55),
+    inset 2px 0 5px rgba(255,255,255,0.08), 0 0 0 1.5px rgba(0,38,58,0.95),
+    0 0 0 4px rgba(0,185,215,0.1), 0 12px 44px rgba(0,190,218,0.48), 0 3px 18px rgba(0,0,0,0.7); }
+  50% { box-shadow:
+    inset 0 3px 10px rgba(255,255,255,0.48), inset 0 -5px 12px rgba(0,0,0,0.55),
+    inset 2px 0 5px rgba(255,255,255,0.08), 0 0 0 1.5px rgba(0,38,58,0.95),
+    0 0 0 6px rgba(0,185,215,0.18), 0 16px 56px rgba(0,190,218,0.65), 0 3px 18px rgba(0,0,0,0.7); }
+}
+@keyframes inv-float-fab {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* Hide scrollbars on horizontal chip rows */
+.inv-scroll-x {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.inv-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* ---------- Visibility helpers ---------- */
+.inv-desktop-only { display: flex; }
+.inv-mobile-only { display: none; }
+@media (max-width: 767px) {
+  .inv-desktop-only { display: none !important; }
+  .inv-mobile-only { display: flex; }
+}
+
+/* ---------- Responsive grids ---------- */
+.inv-grid-kpi,
+.inv-grid-2,
+.inv-grid-3,
+.inv-grid-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 640px) {
+  .inv-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .inv-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+}
+@media (min-width: 900px) {
+  .inv-grid-kpi { grid-template-columns: 1.7fr 1fr; gap: 20px; }
+  .inv-grid-2 { grid-template-columns: 1fr 1fr; gap: 20px; }
+  .inv-grid-4 { grid-template-columns: repeat(4, 1fr); gap: 16px; }
+}
+
+/* Page header: stack title and actions on mobile */
+.inv-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+@media (max-width: 767px) {
+  .inv-page-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+}
+
+/* Tables: horizontal scroll on small screens instead of squashing */
+.inv-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.inv-table-wrap::-webkit-scrollbar { display: none; }
+.inv-table-min { min-width: 680px; }
+
+/* ---------- Liquid glass ---------- */
+.inv-btn {
+  position: relative;
+  isolation: isolate;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 12px 22px;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    transform 0.18s cubic-bezier(0.32, 0.72, 0, 1),
+    box-shadow 0.18s ease,
+    background 0.18s ease,
+    filter 0.18s ease;
+}
+.inv-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.inv-btn > * { position: relative; z-index: 2; }
+
+/* Liquid cyan pill (LiquidBtn del design Figma) */
+.inv-btn-primary {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: linear-gradient(172deg, rgba(165,245,255,0.52) 0%, rgba(0,215,240,0.78) 18%, rgba(0,185,215,0.94) 44%, rgba(0,148,185,1) 68%, rgba(0,102,140,1) 100%);
+  color: #001520;
+  font-weight: 800;
+  box-shadow:
+    inset 0 3px 10px rgba(255,255,255,0.48),
+    inset 0 -5px 12px rgba(0,0,0,0.55),
+    inset 2px 0 5px rgba(255,255,255,0.08),
+    0 0 0 1.5px rgba(0,38,58,0.95),
+    0 0 0 4px rgba(0,185,215,0.1),
+    0 12px 44px rgba(0,190,218,0.48),
+    0 3px 18px rgba(0,0,0,0.7);
+}
+/* rim line in cima */
+.inv-btn-primary::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  left: 0; right: 0; top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.65) 30%, rgba(255,255,255,0.85) 50%, rgba(255,255,255,0.65) 70%, transparent);
+  pointer-events: none;
+}
+/* dome highlight */
+.inv-btn-primary::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 2px 12% auto 12%;
+  height: 42%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.08) 60%, transparent 100%);
+  border-radius: 50%;
+  filter: blur(2px);
+  pointer-events: none;
+}
+.inv-btn-primary > * { position: relative; z-index: 2; }
+.inv-btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+}
+.inv-btn-primary:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* FAB fluttuante animato */
+.inv-fab {
+  animation: inv-pulse-glow 2.8s ease-in-out infinite, inv-float-fab 3.4s ease-in-out infinite;
+}
+
+/* Prismatic glass (GlassPanel del design): bordo gradiente + core scuro traslucido */
+.inv-btn-glass,
+.inv-glass {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(rgba(4, 8, 18, 0.22), rgba(4, 8, 18, 0.22)) padding-box,
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0.18) 100%) border-box;
+  border: 1px solid transparent;
+  -webkit-backdrop-filter: blur(48px);
+  backdrop-filter: blur(48px);
+  color: #F8FAFC;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+/* shimmer superiore */
+.inv-btn-glass::before,
+.inv-glass::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0 15% auto 15%;
+  height: 35%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 100%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.inv-btn-glass > *,
+.inv-glass > * { position: relative; z-index: 2; }
+.inv-btn-glass:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background:
+    linear-gradient(rgba(10, 16, 30, 0.32), rgba(10, 16, 30, 0.32)) padding-box,
+    linear-gradient(135deg, rgba(0, 215, 240, 0.4) 0%, rgba(255, 255, 255, 0.08) 45%, rgba(0, 215, 240, 0.25) 100%) border-box;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+    0 8px 28px rgba(0, 190, 218, 0.18);
+}
+.inv-btn-glass:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Glass surface for nav bars / floating panels (no hover lift) */
+.inv-glass-panel {
+  background:
+    linear-gradient(rgba(4, 8, 18, 0.55), rgba(4, 8, 18, 0.55)) padding-box,
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.04) 100%) border-box;
+  border: 1px solid transparent;
+  -webkit-backdrop-filter: blur(40px);
+  backdrop-filter: blur(40px);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.14),
+    0 12px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* Icon buttons hover */
+.inv-icon-btn {
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.inv-icon-btn:hover {
+  border-color: rgba(6, 182, 212, 0.4) !important;
+  transform: translateY(-1px);
+}
+.inv-icon-btn:active { transform: scale(0.95); }
+
+/* Card hover lift for clickable cards */
+.inv-card-click {
+  transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.inv-card-click:hover {
+  transform: translateY(-2px);
+  border-color: rgba(6, 182, 212, 0.3) !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(6, 182, 212, 0.1);
+}
+
+/* Focus visibility for keyboard users */
+.inv-btn:focus-visible,
+.inv-icon-btn:focus-visible,
+a:focus-visible {
+  outline: 2px solid #06B6D4;
+  outline-offset: 2px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(6, 182, 212, 0.5) !important;
 }

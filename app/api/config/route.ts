@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { isDemoMode } from '@/lib/demo'
+import { demoConfig, demoTaglieItems } from '@/lib/demo-data'
 
 export async function GET() {
+  if (isDemoMode()) {
+    return NextResponse.json({ venditori: demoConfig.venditori, categorie: demoConfig.categorie })
+  }
+
   try {
     const [{ data: venditori }, { data: categorie }] = await Promise.all([
       supabase.from('config_venditori').select('*').order('nome'),

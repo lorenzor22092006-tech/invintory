@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  Skeleton,
+  EmptyState,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius } from '@/lib/theme'
 
 interface ScadenzaItem {
   sku: string
@@ -13,15 +23,9 @@ interface ScadenzaItem {
 }
 
 function giorniColor(giorni: number): string {
-  if (giorni <= 3) return '#EF4444'
-  if (giorni <= 7) return '#F59E0B'
-  return '#22C55E'
-}
-
-function giorniLabel(giorni: number): string {
-  if (giorni === 0) return 'Scade oggi'
-  if (giorni === 1) return '1 giorno'
-  return `${giorni} giorni`
+  if (giorni <= 3) return colors.danger
+  if (giorni <= 7) return colors.warning
+  return colors.success
 }
 
 export default function ScadenzePage() {
@@ -75,182 +79,69 @@ export default function ScadenzePage() {
   }, [])
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: '#061311',
-        display: 'flex',
-        flexDirection: 'column',
-        maxWidth: 430,
-        margin: '0 auto',
-        paddingBottom: 90,
-      }}
-    >
-      {/* HEADER */}
-      <div style={{ padding: '52px 20px 0' }}>
-        <button
-          onClick={() => router.back()}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            background: 'none',
-            border: 'none',
-            color: '#10B981',
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: 'pointer',
-            padding: 0,
-            marginBottom: 20,
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Indietro
-        </button>
+    <PageShell>
+      <PageHeader
+        title="Scadenze"
+        subtitle="Prodotti in stock con reso in scadenza"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
-        <h1 style={{ fontSize: 22, fontWeight: 800, color: '#F8FAFC', margin: '0 0 4px' }}>
-          Scadenze
-        </h1>
-        <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 20px' }}>
-          Prodotti in stock con reso in scadenza
-        </p>
-      </div>
-
-      {/* LISTA */}
-      <div style={{ padding: '0 20px' }}>
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} style={{ height: 80, borderRadius: 14, background: '#0B1F1A', opacity: 0.5 }} />
-            ))}
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} height={56} />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <EmptyState icon="✅" message="Nessun prodotto in scadenza" />
+      ) : (
+        <div style={{ ...S.card, overflow: 'hidden' }}>
+          <div style={S.tableHeader}>
+            <span>SKU</span>
+            <span>Modello</span>
+            <span>Taglia</span>
+            <span>Scadenza</span>
+            <span>Giorni</span>
+            <span />
           </div>
-        ) : items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px', color: '#64748B', fontSize: 14 }}>
-            <div style={{ fontSize: 40, marginBottom: 10 }}>✅</div>
-            Nessun prodotto in scadenza
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {items.map((item) => {
-              const color = giorniColor(item.giorniRimanenti)
-              return (
-                <div
-                  key={item.sku}
+          {items.map((item) => {
+            const color = giorniColor(item.giorniRimanenti)
+            return (
+              <div
+                key={item.sku}
+                style={{
+                  ...S.tableRow,
+                  borderLeft: item.giorniRimanenti <= 7 ? `3px solid ${color}` : undefined,
+                }}
+              >
+                <span
                   style={{
-                    background: '#0B1F1A',
-                    border: `1.5px solid ${item.giorniRimanenti <= 7 ? color + '55' : '#1B3A34'}`,
-                    borderRadius: 14,
-                    padding: '14px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 14,
+                    background: colors.accentSoft,
+                    border: `1px solid ${colors.accent}`,
+                    borderRadius: radius.sm,
+                    padding: '4px 10px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: colors.accent,
+                    width: 'fit-content',
                   }}
                 >
-                  {/* FOTO */}
-                  <div
-                    style={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 12,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      overflow: 'hidden',
-                      flexShrink: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {item.fotoUrl ? (
-                      <img
-                        src={`/api/image-proxy?url=${encodeURIComponent(item.fotoUrl)}`}
-                        alt={item.idModello}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                      />
-                    ) : (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                        <rect x="3" y="3" width="18" height="18" rx="3" stroke="#1B3A34" strokeWidth="1.5" />
-                        <path d="M3 16l5-5 4 4 3-3 6 6" stroke="#1B3A34" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-
-                  {/* INFO */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* SKU badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 5 }}>
-                      <span
-                        style={{
-                          background: 'rgba(16,185,129,0.12)',
-                          border: '1px solid #10B981',
-                          borderRadius: 6,
-                          padding: '2px 8px',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: '#10B981',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {item.sku}
-                      </span>
-                      {item.taglia && (
-                        <span style={{ fontSize: 11, color: '#64748B' }}>
-                          Taglia {item.taglia}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Modello */}
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 700,
-                        color: '#F8FAFC',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        marginBottom: 3,
-                      }}
-                    >
-                      {item.idModello || '—'}
-                    </div>
-
-                    {/* Data scadenza */}
-                    <div style={{ fontSize: 12, color: '#64748B' }}>
-                      Scade il {item.scadenzaReso}
-                    </div>
-                  </div>
-
-                  {/* GIORNI RIMANENTI */}
-                  <div
-                    style={{
-                      flexShrink: 0,
-                      background: color + '18',
-                      border: `1.5px solid ${color}`,
-                      borderRadius: 10,
-                      padding: '8px 12px',
-                      textAlign: 'center',
-                      minWidth: 60,
-                    }}
-                  >
-                    <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1 }}>
-                      {item.giorniRimanenti}
-                    </div>
-                    <div style={{ fontSize: 10, color, fontWeight: 600, marginTop: 2 }}>
-                      {item.giorniRimanenti === 1 ? 'giorno' : 'giorni'}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+                  {item.sku}
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {item.idModello || '—'}
+                </span>
+                <span style={{ fontSize: 13, color: colors.textMuted }}>{item.taglia || '—'}</span>
+                <span style={{ fontSize: 13, color: colors.textSecondary }}>{item.scadenzaReso}</span>
+                <span style={{ fontSize: 15, fontWeight: 800, color }}>{item.giorniRimanenti}</span>
+                <span style={{ fontSize: 11, color, fontWeight: 600 }}>
+                  {item.giorniRimanenti === 1 ? 'giorno' : 'giorni'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </PageShell>
   )
 }

@@ -2,6 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import SalesChart from '@/components/SalesChart'
+import type { Vendita } from '@/lib/types'
+import {
+  PageShell,
+  PageHeader,
+  SearchBar,
+  Card,
+  SectionCard,
+  SkuBadge,
+  EmptyState,
+  Skeleton,
+  PrimaryButton,
+  SecondaryButton,
+  IconButton,
+  ExpandLink,
+  ErrorBox,
+  Chip,
+  ChipRow,
+  TableScroll,
+  colors,
+  S,
+} from '@/components/ui'
 
 interface StockItem {
   sku: string
@@ -27,15 +49,38 @@ export default function HomePage() {
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)
   const [searchError, setSearchError] = useState<string | null>(null)
   const [mostraScaduti, setMostraScaduti] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [vendite, setVendite] = useState<Vendita[]>([])
+  const [venditeLoading, setVenditeLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/vendite')
+      .then((r) => r.json())
+      .then((data: Vendita[]) => {
+        setVendite(Array.isArray(data) ? data : [])
+        setVenditeLoading(false)
+      })
+      .catch(() => setVenditeLoading(false))
+  }, [])
 
   useEffect(() => {
     fetch('/api/stock')
-      .then((r) => r.json())
-      .then((data) => {
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok) {
+          setLoadError(data.error || 'Impossibile caricare lo stock')
+          setItems([])
+          setLoading(false)
+          return
+        }
         setItems(data.items || [])
+        setLoadError(null)
         setLoading(false)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setLoadError('Errore di rete durante il caricamento dello stock')
+        setLoading(false)
+      })
   }, [])
 
   const inScadenza = useMemo(() => {
@@ -60,9 +105,16 @@ export default function HomePage() {
         item.giorniRimanenti !== null &&
         item.giorniRimanenti < 0
     )
-    // dal meno scaduto (-1) al più scaduto
     return [...filtered].sort((a, b) => (b.giorniRimanenti ?? 0) - (a.giorniRimanenti ?? 0))
   }, [items])
+
+  const urgentCount = useMemo(
+    () =>
+      inScadenza.filter(
+        (item) => item.giorniRimanenti !== null && item.giorniRimanenti <= 7
+      ).length,
+    [inScadenza]
+  )
 
   useEffect(() => {
     if (!search.trim()) {
@@ -112,10 +164,10 @@ export default function HomePage() {
   }
 
   const getScadenzaColor = (giorni: number | null) => {
-    if (giorni === null) return '#64748B'
-    if (giorni <= 3) return '#EF4444'
-    if (giorni <= 7) return '#F59E0B'
-    return '#22C55E'
+    if (giorni === null) return colors.textMuted
+    if (giorni <= 3) return colors.danger
+    if (giorni <= 7) return colors.warning
+    return colors.success
   }
 
   const getScadenzaLabel = (giorni: number | null) => {
@@ -125,817 +177,260 @@ export default function HomePage() {
     return `${giorni} giorni`
   }
 
-  return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: '#061311',
-        display: 'flex',
-        flexDirection: 'column',
-        maxWidth: 430,
-        margin: '0 auto',
-        paddingBottom: 90,
-      }}
-    >
-      {/* HEADER */}
+  function TableRow({
+    item,
+    danger,
+    onEdit,
+  }: {
+    item: StockItem
+    danger?: boolean
+    onEdit: () => void
+  }) {
+    return (
       <div
         style={{
-          padding: '56px 24px 32px',
-          display: 'flex',
-          flexDirection: 'column',
+          ...S.tableRow,
+          background: danger ? colors.dangerSoft : 'transparent',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = colors.bgMuted }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = danger ? colors.dangerSoft : 'transparent' }}
+      >
+        <span style={{ fontWeight: 800, color: colors.accentBright, fontSize: 13 }}>{item.sku}</span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {item.idModello || '—'}
+          </div>
+          <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{item.numeroOrdine || '—'}</div>
+        </div>
+        <span style={{ color: colors.textSecondary, fontSize: 13 }}>{item.taglia || 'n.d.'}</span>
+        <span style={{ color: colors.textSecondary, fontSize: 13 }}>{item.scadenzaReso || '—'}</span>
+        <span style={{ fontWeight: 800, color: danger ? colors.danger : getScadenzaColor(item.giorniRimanenti), fontSize: 13 }}>
+          {danger ? `${Math.abs(item.giorniRimanenti ?? 0)} gg fa` : getScadenzaLabel(item.giorniRimanenti)}
+        </span>
+        <IconButton onClick={onEdit} label={`Modifica ${item.sku}`} size={36}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </IconButton>
+      </div>
+    )
+  }
+
+  return (
+    <PageShell>
+      {/* FAB mobile: registra vendita (stile design, animato) */}
+      <button
+        type="button"
+        onClick={() => router.push('/vendite/nuova')}
+        className="inv-mobile-only inv-btn inv-btn-primary inv-fab"
+        style={{
+          position: 'fixed',
+          bottom: 'var(--inv-fab-bottom)',
+          right: 18,
+          zIndex: 45,
+          padding: '13px 22px',
+          fontSize: 13,
           alignItems: 'center',
-          textAlign: 'center',
-          gap: 8,
+          gap: 6,
         }}
       >
-        <img
-          src="/invintory-logo.png"
-          alt=""
-          width={220}
-          height={220}
-          style={{
-            width: 'min(200px, 72vw)',
-            height: 'auto',
-            objectFit: 'contain',
-            display: 'block',
-          }}
-        />
-        <h1
-          style={{
-            fontSize: 26,
-            fontWeight: 700,
-            color: '#F8FAFC',
-            letterSpacing: '0.2em',
-            margin: '10px 0 0',
-            textTransform: 'uppercase',
-          }}
-        >
-          INVINTORY
-        </h1>
-        <p
-          style={{
-            fontSize: 15,
-            color: '#64748B',
-            margin: '8px 0 0',
-          }}
-        >
-          Gestisci il tuo stock
-        </p>
-      </div>
+        + Vendita
+      </button>
 
-      {/* SEARCH BAR */}
-      <div style={{ padding: '0 20px 28px' }}>
-        <form onSubmit={handleSearch}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 14,
-              padding: '0 16px',
-              gap: 10,
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <circle cx="11" cy="11" r="7" stroke="#64748B" strokeWidth="2" />
-              <path d="M20 20l-3-3" stroke="#64748B" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Cerca per SKU..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: '#F8FAFC',
-                fontSize: 15,
-                padding: '14px 0',
-              }}
-            />
-            {search && (
-              <button
-                type="submit"
-                style={{
-                  background: '#10B981',
-                  border: 'none',
-                  borderRadius: 8,
-                  color: 'white',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  padding: '6px 12px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cerca
-              </button>
-            )}
+      {loadError && (
+        <div style={{ marginBottom: 20 }}>
+          <ErrorBox message={loadError} />
+        </div>
+      )}
+      <PageHeader
+        title="Dashboard"
+        subtitle="Gestisci il tuo stock Rubinos Sellers"
+        filters={
+          <ChipRow>
+            <Chip label={loading ? '…' : `${inScadenza.length} in scadenza`} active />
+            <Chip label={loading ? '…' : `${urgentCount} urgenti`} />
+            <Chip label={loading ? '…' : `${scaduti.length} scaduti`} onClick={() => setMostraScaduti((v) => !v)} />
+          </ChipRow>
+        }
+        action={
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <SecondaryButton onClick={() => router.push('/stock/nuovo')}>+ Prodotto</SecondaryButton>
+            <PrimaryButton onClick={() => router.push('/vendite/nuova')}>+ Registra Vendita</PrimaryButton>
           </div>
-        </form>
+        }
+      />
 
-        {(searchHit || searchError) && (
-          <div style={{ marginTop: 16 }}>
-            {searchHit ? (
-              <div
-                style={{
-                  background: '#0B1F1A',
-                  border: '2px solid #10B981',
-                  borderRadius: 14,
-                  padding: '16px 14px',
-                  boxShadow: '0 4px 24px rgba(16,185,129,0.2)',
-                  position: 'relative',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={clearSearchBanner}
-                  aria-label="Chiudi risultato ricerca"
-                  style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    border: '1px solid #1B3A34',
-                    background: '#102A24',
-                    color: '#94A3B8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    lineHeight: 1,
-                    fontSize: 18,
-                  }}
-                >
-                  ×
-                </button>
-                <p
-                  style={{
-                    margin: '0 40px 12px 0',
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: '#10B981',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                  }}
-                >
-                  Risultato ricerca
-                </p>
-                <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div
-                    style={{
-                      minWidth: 52,
-                      height: 52,
-                      borderRadius: 12,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: 9, color: '#64748B', fontWeight: 600 }}>SKU</span>
-                    <span style={{ fontSize: 14, color: '#F8FAFC', fontWeight: 700 }}>
-                      {searchHit.sku}
-                    </span>
-                  </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div
-                      style={{
-                        fontSize: 16,
-                        fontWeight: 700,
-                        color: '#F8FAFC',
-                        lineHeight: 1.25,
-                      }}
-                    >
-                      {searchHit.idModello || '—'}
-                    </div>
-                    <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 6 }}>
-                      Taglia {searchHit.taglia || 'n.d.'} · {searchHit.esito || '—'}
-                    </div>
-                  </div>
-                </div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '8px 12px',
-                    fontSize: 13,
-                    color: '#94A3B8',
-                    borderTop: '1px solid #1B3A34',
-                    paddingTop: 12,
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: 11, color: '#64748B' }}>Ordine</div>
-                    <div style={{ color: '#F8FAFC' }}>{searchHit.numeroOrdine || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#64748B' }}>Data ordine</div>
-                    <div style={{ color: '#F8FAFC' }}>{searchHit.dataOrdine || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#64748B' }}>Prezzo acquisto</div>
-                    <div style={{ color: '#F8FAFC' }}>{searchHit.prezzoAcquisto || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#64748B' }}>Scadenza reso</div>
-                    <div style={{ color: '#F8FAFC' }}>{searchHit.scadenzaReso || '—'}</div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <div style={{ fontSize: 11, color: '#64748B' }}>Giorni rimanenti</div>
-                    <div
-                      style={{
-                        color: getScadenzaColor(searchHit.giorniRimanenti),
-                        fontWeight: 700,
-                      }}
-                    >
-                      {searchHit.giorniRimanenti === null
-                        ? '—'
-                        : getScadenzaLabel(searchHit.giorniRimanenti)}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(`/stock/${encodeURIComponent(searchHit.sku)}/modifica`)
-                  }
-                  style={{
-                    marginTop: 14,
-                    width: '100%',
-                    background: '#10B981',
-                    border: 'none',
-                    borderRadius: 14,
-                    color: 'white',
-                    fontSize: 15,
-                    fontWeight: 700,
-                    padding: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Modifica prodotto
-                </button>
-              </div>
-            ) : (
-              <div
-                style={{
-                  background: '#0B1F1A',
-                  border: '1.5px solid #1B3A34',
-                  borderRadius: 14,
-                  padding: '14px 40px 14px 14px',
-                  color: '#EF4444',
-                  fontSize: 14,
-                  position: 'relative',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={clearSearchBanner}
-                  aria-label="Chiudi messaggio"
-                  style={{
-                    position: 'absolute',
-                    top: 10,
-                    right: 10,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    border: '1px solid #1B3A34',
-                    background: '#102A24',
-                    color: '#94A3B8',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    lineHeight: 1,
-                    fontSize: 18,
-                  }}
-                >
-                  ×
-                </button>
-                {searchError}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* CHART + SIDE COLUMN */}
+      <div className="inv-grid-kpi" style={{ marginBottom: 24 }}>
+        <Card style={{ padding: 0, overflow: 'hidden' }}>
+          <SalesChart vendite={vendite} loading={venditeLoading} />
+        </Card>
 
-      {/* TWO BIG BUTTONS */}
-      <div style={{ padding: '0 20px 36px', display: 'flex', gap: 12 }}>
-        <button
-          onClick={() => router.push('/vendite/nuova')}
-          style={{
-            flex: 1,
-            background: '#10B981',
-            border: 'none',
-            borderRadius: 16,
-            padding: '20px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 10,
-            cursor: 'pointer',
-            boxShadow: '0 4px 24px rgba(16,185,129,0.25)',
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.2)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 5v14M5 12h14"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <span
-            style={{
-              color: 'white',
-              fontSize: 14,
-              fontWeight: 700,
-              textAlign: 'center',
-              lineHeight: 1.2,
-            }}
-          >
-            Registra{'\n'}Vendita
-          </span>
-        </button>
-
-        <button
-          onClick={() => router.push('/stock/nuovo')}
-          style={{
-            flex: 1,
-            background: '#0B1F1A',
-            border: '1.5px solid #1B3A34',
-            borderRadius: 16,
-            padding: '20px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 10,
-            cursor: 'pointer',
-          }}
-        >
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'rgba(16,185,129,0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="#10B981" strokeWidth="2" />
-              <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="#10B981" strokeWidth="2" />
-              <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="#10B981" strokeWidth="2" />
-              <path d="M17.5 14v7M14 17.5h7" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <span
-            style={{
-              color: '#F8FAFC',
-              fontSize: 14,
-              fontWeight: 700,
-              textAlign: 'center',
-              lineHeight: 1.2,
-            }}
-          >
-            Registra{'\n'}Prodotto
-          </span>
-        </button>
-      </div>
-
-      {/* REGISTRA RESO */}
-      <div style={{ padding: '0 20px 36px' }}>
-        <button
-          onClick={() => router.push('/resi/nuovo')}
-          style={{
-            width: '100%',
-            background: '#0B1F1A',
-            border: '1.5px solid #1B3A34',
-            borderRadius: 16,
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M9 14l-4-4 4-4" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M5 10h11a4 4 0 0 1 0 8h-1" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700 }}>Registra Reso</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginLeft: 'auto' }}>
-            <path d="M9 18l6-6-6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* ARTICOLI SCADUTI */}
-      <div style={{ padding: '0 20px 36px' }}>
-        <button
-          type="button"
-          onClick={() => setMostraScaduti((v) => !v)}
-          style={{
-            width: '100%',
-            background: '#0B1F1A',
-            border: '1.5px solid #1B3A34',
-            borderRadius: 16,
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 14,
-            cursor: 'pointer',
-          }}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(239,68,68,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="9" stroke="#EF4444" strokeWidth="2" />
-              <path d="M12 7v5l3 2" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <span style={{ color: '#F8FAFC', fontSize: 15, fontWeight: 700 }}>Articoli scaduti</span>
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontSize: 13,
-              fontWeight: 700,
-              color: '#EF4444',
-              background: 'rgba(239,68,68,0.12)',
-              borderRadius: 999,
-              padding: '2px 10px',
-              minWidth: 26,
-              textAlign: 'center',
-            }}
-          >
-            {loading ? '…' : scaduti.length}
-          </span>
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            style={{ transform: mostraScaduti ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}
-          >
-            <path d="M6 9l6 6 6-6" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        {mostraScaduti && (
-          <div style={{ marginTop: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <Card style={{ padding: '20px 22px', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 18, right: 18 }}>
+              <ExpandLink onClick={() => router.push('/bilancio/scadenze')} />
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+              Prossime scadenze
+            </div>
             {loading ? (
-              <div style={{ color: '#64748B', fontSize: 14, padding: '8px 4px' }}>Caricamento…</div>
-            ) : scaduti.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px 20px', color: '#64748B', fontSize: 14 }}>
-                <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
-                Nessun articolo scaduto
-              </div>
+              <Skeleton height={120} />
+            ) : inScadenza.length === 0 ? (
+              <EmptyState icon="✓" message="Nessuna scadenza attiva" />
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {scaduti.map((item) => (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {inScadenza.slice(0, 5).map((item, i) => (
                   <div
                     key={item.sku}
+                    onClick={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)}
                     style={{
-                      background: '#0B1F1A',
-                      border: '1.5px solid rgba(239,68,68,0.4)',
-                      borderRadius: 14,
-                      padding: '14px 16px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
+                      gap: 10,
+                      padding: '9px 0',
+                      borderTop: i > 0 ? `1px solid ${colors.border}` : 'none',
+                      cursor: 'pointer',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                      <div
-                        style={{
-                          minWidth: 44,
-                          height: 44,
-                          borderRadius: 10,
-                          background: '#102A24',
-                          border: '1px solid #1B3A34',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <span style={{ fontSize: 9, color: '#64748B', fontWeight: 600 }}>SKU</span>
-                        <span style={{ fontSize: 13, color: '#F8FAFC', fontWeight: 700 }}>{item.sku}</span>
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div
-                          style={{
-                            fontSize: 14,
-                            fontWeight: 600,
-                            color: '#F8FAFC',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {item.idModello || '—'}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                          {item.taglia ? `Taglia ${item.taglia}` : 'Taglia n.d.'} · Scaduto il{' '}
-                          {item.scadenzaReso}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)}
-                        title="Modifica prodotto"
-                        aria-label={`Modifica prodotto SKU ${item.sku}`}
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 12,
-                          border: '1.5px solid #1B3A34',
-                          background: '#102A24',
-                          color: '#94A3B8',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                          <path
-                            d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <div style={{ textAlign: 'right', minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: '#EF4444' }}>
-                          {Math.abs(item.giorniRimanenti ?? 0)} gg fa
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>scaduto</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* PRODOTTI IN SCADENZA */}
-      <div style={{ padding: '0 20px' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            marginBottom: 14,
-          }}
-        >
-          {/* dropdown a sinistra */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setSortMenuOpen((v) => !v)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                background: '#102A24', border: '1.5px solid #1B3A34',
-                borderRadius: 10, padding: '7px 12px', cursor: 'pointer', color: '#10B981',
-                fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
-              }}
-            >
-              {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M6 9l6 6 6-6" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-            {sortMenuOpen && (
-              <div style={{
-                position: 'absolute', top: '110%', left: 0, zIndex: 50,
-                background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12,
-                overflow: 'hidden', minWidth: 140, boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
-              }}>
-                {(['scadenza', 'sku'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => { setSortMode(mode); setSortMenuOpen(false) }}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '11px 14px',
-                      border: 'none', borderBottom: mode === 'scadenza' ? '1px solid #102A24' : 'none',
-                      background: sortMode === mode ? 'rgba(16,185,129,0.15)' : 'transparent',
-                      color: sortMode === mode ? '#10B981' : '#F8FAFC',
-                      fontSize: 13, fontWeight: sortMode === mode ? 700 : 400, cursor: 'pointer',
-                    }}
-                  >
-                    {mode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* freccia + contatore a destra */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>
-              {loading ? '...' : `${inScadenza.length} prodotti`}
-            </span>
-            <button
-              type="button"
-              onClick={() => setSortAsc((v) => !v)}
-              style={{
-                width: 32, height: 32, borderRadius: '50%',
-                border: '1.5px solid #1B3A34', background: '#102A24',
-                color: '#10B981', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}
-          >
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                style={{
-                  height: 72,
-                  borderRadius: 14,
-                  background: '#0B1F1A',
-                  opacity: 0.5,
-                  animation: 'pulse 1.5s ease-in-out infinite',
-                }}
-              />
-            ))}
-          </div>
-        ) : inScadenza.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '40px 20px',
-              color: '#64748B',
-              fontSize: 14,
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-            Nessun prodotto in scadenza
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {inScadenza.map((item) => (
-              <div
-                key={item.sku}
-                style={{
-                  background: '#0B1F1A',
-                  border: '1.5px solid #1B3A34',
-                  borderRadius: 14,
-                  padding: '14px 16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                }}
-              >
-                {/* Left: SKU + info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                  {/* SKU badge */}
-                  <div
-                    style={{
-                      minWidth: 44,
-                      height: 44,
-                      borderRadius: 10,
-                      background: '#102A24',
-                      border: '1px solid #1B3A34',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: 9, color: '#64748B', fontWeight: 600 }}>SKU</span>
-                    <span style={{ fontSize: 13, color: '#F8FAFC', fontWeight: 700 }}>
-                      {item.sku}
+                    <span style={{ fontSize: 12, fontWeight: 800, color: colors.accentBright, minWidth: 34 }}>{item.sku}</span>
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.idModello || '—'}
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: getScadenzaColor(item.giorniRimanenti), flexShrink: 0 }}>
+                      {getScadenzaLabel(item.giorniRimanenti)}
                     </span>
                   </div>
-
-                  {/* Info */}
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: '#F8FAFC',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {item.idModello || '—'}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                      {item.taglia ? `Taglia ${item.taglia}` : 'Taglia n.d.'} · Scade{' '}
-                      {item.scadenzaReso}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: modifica + giorni rimanenti */}
-                <div
-                  style={{
-                    flexShrink: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)
-                    }
-                    title="Modifica prodotto"
-                    aria-label={`Modifica prodotto SKU ${item.sku}`}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      border: '1.5px solid #1B3A34',
-                      background: '#102A24',
-                      color: '#94A3B8',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path
-                        d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <div style={{ textAlign: 'right', minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: getScadenzaColor(item.giorniRimanenti),
-                      }}
-                    >
-                      {getScadenzaLabel(item.giorniRimanenti)}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>rimanenti</div>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
+          </Card>
+
+          <Card style={{ padding: '20px 22px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
+              Azioni rapide
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <SecondaryButton fullWidth onClick={() => router.push('/resi/nuovo')}>Registra Reso</SecondaryButton>
+              <SecondaryButton fullWidth onClick={() => router.push('/taglie')}>Vai ai Modelli</SecondaryButton>
+              <SecondaryButton fullWidth onClick={() => router.push('/bilancio')}>Apri Bilancio</SecondaryButton>
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+
+      {/* SEARCH BAR ROW */}
+      <div style={{ marginBottom: 24 }}>
+        <div>
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Cerca per SKU…"
+            onSubmit={handleSearch}
+            onClear={() => setSearch('')}
+            action={
+              search ? (
+                <button type="submit" className="inv-btn inv-btn-primary" style={{ padding: '8px 16px', fontSize: 13 }}>
+                  Cerca
+                </button>
+              ) : undefined
+            }
+          />
+          {(searchHit || searchError) && (
+            <div style={{ marginTop: 14 }}>
+              {searchHit ? (
+                <Card style={{ padding: '20px 24px', border: `1px solid ${colors.borderStrong}`, position: 'relative' }}>
+                  <button type="button" onClick={clearSearchBanner} aria-label="Chiudi" className="inv-icon-btn inv-btn-glass" style={{ ...S.iconBtn, position: 'absolute', top: 14, right: 14, width: 36, height: 36 }}>×</button>
+                  <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 800, color: colors.accentBright, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Risultato ricerca</p>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                    <SkuBadge sku={searchHit.sku} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 18, fontWeight: 800 }}>{searchHit.idModello || '—'}</div>
+                      <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
+                        Taglia {searchHit.taglia || 'n.d.'} · {searchHit.esito}
+                      </div>
+                    </div>
+                    <PrimaryButton onClick={() => router.push(`/stock/${encodeURIComponent(searchHit.sku)}/modifica`)}>
+                      Modifica
+                    </PrimaryButton>
+                  </div>
+                </Card>
+              ) : (
+                <ErrorBox message={searchError!} />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SCADUTI TABLE */}
+      {mostraScaduti && (
+        <div style={{ marginBottom: 24 }}>
+        <SectionCard title="Articoli scaduti" subtitle={`${scaduti.length} prodotti oltre la scadenza reso`}>
+          {loading ? (
+            <div style={{ padding: 20 }}><Skeleton height={120} /></div>
+          ) : scaduti.length === 0 ? (
+            <EmptyState icon="✓" message="Nessun articolo scaduto" />
+          ) : (
+            <TableScroll>
+              <div style={S.tableHeader}>
+                <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Stato</span><span />
+              </div>
+              {scaduti.map((item) => (
+                <TableRow key={item.sku} item={item} danger onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
+              ))}
+            </TableScroll>
+          )}
+        </SectionCard>
+        </div>
+      )}
+
+      {/* PRODOTTI IN SCADENZA TABLE */}
+      <SectionCard
+        title="Prodotti in scadenza"
+        subtitle={loading ? 'Caricamento…' : `${inScadenza.length} prodotti attivi`}
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setSortMenuOpen((v) => !v)} className="inv-btn-glass" style={{ ...S.chip, ...(sortMenuOpen ? S.chipActive : {}), padding: '7px 14px', fontSize: 12 }}>
+                {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'} ▾
+              </button>
+              {sortMenuOpen && (
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 40, ...S.card, overflow: 'hidden', minWidth: 160, padding: 0 }}>
+                  {(['scadenza', 'sku'] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => { setSortMode(mode); setSortMenuOpen(false) }}
+                      style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: mode === 'scadenza' ? `1px solid ${colors.border}` : 'none', background: sortMode === mode ? colors.accentSoft : 'transparent', color: sortMode === mode ? colors.accentBright : colors.text, fontSize: 13, fontWeight: sortMode === mode ? 700 : 400, cursor: 'pointer' }}>
+                      {mode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <IconButton onClick={() => setSortAsc((v) => !v)} label="Inverti ordine" size={36}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease' }}>
+                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </IconButton>
+          </div>
+        }
+      >
+        {loading ? (
+          <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} height={52} />)}
+          </div>
+        ) : inScadenza.length === 0 ? (
+          <EmptyState icon="✓" message="Nessun prodotto in scadenza" />
+        ) : (
+          <TableScroll>
+            <div style={S.tableHeader}>
+              <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Giorni</span><span />
+            </div>
+            {inScadenza.map((item) => (
+              <TableRow key={item.sku} item={item} onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
+            ))}
+          </TableScroll>
+        )}
+      </SectionCard>
+    </PageShell>
   )
 }

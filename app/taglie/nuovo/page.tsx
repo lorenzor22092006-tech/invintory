@@ -2,6 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  PrimaryButton,
+  FormLabel,
+  FormInput,
+  ErrorBox,
+  Chip,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius } from '@/lib/theme'
 
 function convertToJpeg(file: File): Promise<File> {
   return new Promise((resolve) => {
@@ -96,43 +109,19 @@ export default function NuovoModelloPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: '#061311',
-      display: 'flex',
-      flexDirection: 'column',
-      maxWidth: 430,
-      margin: '0 auto',
-      paddingBottom: 90,
-    }}>
-      <div style={{ padding: '52px 20px 0' }}>
-        <button
-          onClick={() => router.back()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#10B981', fontSize: 15, fontWeight: 600, cursor: 'pointer', padding: 0 }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          Indietro
-        </button>
-      </div>
+    <PageShell>
+      <PageHeader
+        title="Nuovo modello"
+        subtitle="Aggiungi un nuovo modello al catalogo taglie"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
-      <div style={{ padding: '20px 20px 0' }}>
-        <h1 style={{ fontSize: 24, fontWeight: 800, color: '#F8FAFC', margin: 0 }}>
-          Nuovo modello
-        </h1>
-        <p style={{ fontSize: 14, color: '#64748B', marginTop: 6 }}>
-          Aggiungi un nuovo modello al catalogo taglie
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} style={{ padding: '28px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-        {/* FOTO */}
+      <form
+        onSubmit={handleSubmit}
+        style={{ maxWidth: 560, display: 'flex', flexDirection: 'column', gap: 20 }}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Foto
-          </label>
+          <FormLabel>Foto</FormLabel>
           <input
             ref={fileInputRef}
             type="file"
@@ -146,9 +135,9 @@ export default function NuovoModelloPage() {
             style={{
               width: '100%',
               height: fotoPreview ? 'auto' : 120,
-              background: '#0B1F1A',
-              border: `2px dashed ${fotoPreview ? '#10B981' : '#1B3A34'}`,
-              borderRadius: 14,
+              background: colors.bgCard,
+              border: `2px dashed ${fotoPreview ? colors.accent : colors.border}`,
+              borderRadius: radius.lg,
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
@@ -163,16 +152,16 @@ export default function NuovoModelloPage() {
               <img
                 src={fotoPreview}
                 alt="preview"
-                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 12 }}
+                style={{ width: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: radius.md }}
               />
             ) : (
               <>
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                  <rect x="3" y="3" width="18" height="18" rx="3" stroke="#64748B" strokeWidth="1.5" />
-                  <circle cx="8.5" cy="8.5" r="1.5" fill="#64748B" />
-                  <path d="M21 15l-5-5L5 21" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="3" y="3" width="18" height="18" rx="3" stroke={colors.textMuted} strokeWidth="1.5" />
+                  <circle cx="8.5" cy="8.5" r="1.5" fill={colors.textMuted} />
+                  <path d="M21 15l-5-5L5 21" stroke={colors.textMuted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                <span style={{ fontSize: 13, color: '#64748B' }}>Tocca per caricare una foto</span>
+                <span style={{ fontSize: 13, color: colors.textMuted }}>Tocca per caricare una foto</span>
               </>
             )}
           </button>
@@ -180,85 +169,54 @@ export default function NuovoModelloPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              style={{ background: 'none', border: 'none', color: '#10B981', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+              style={{ background: 'none', border: 'none', color: colors.accent, fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }}
             >
               Cambia foto
             </button>
           )}
         </div>
 
-        {/* ID Modello */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            ID Modello *
-          </label>
+          <FormLabel>ID Modello *</FormLabel>
           <input
             type="text"
             value={idModello}
             onChange={(e) => setIdModello(e.target.value.toUpperCase())}
             placeholder="es. NIKE AIR MAX 90"
-            style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12, padding: '14px 16px', color: '#F8FAFC', fontSize: 15, outline: 'none' }}
+            style={S.input}
           />
         </div>
 
-        {/* Categoria */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <label style={{ fontSize: 13, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Categoria *
-          </label>
+          <FormLabel>Categoria *</FormLabel>
           {categorie.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {categorie.map((cat) => (
-                <button
+                <Chip
                   key={cat}
-                  type="button"
+                  label={cat}
+                  active={categoria === cat}
                   onClick={() => setCategoria(cat)}
-                  style={{
-                    background: categoria === cat ? '#10B981' : '#0B1F1A',
-                    border: `1.5px solid ${categoria === cat ? '#10B981' : '#1B3A34'}`,
-                    borderRadius: 10,
-                    padding: '8px 16px',
-                    color: categoria === cat ? 'white' : '#94A3B8',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {cat}
-                </button>
+                />
               ))}
             </div>
           )}
-          <input
-            type="text"
+          <FormInput
             value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
+            onChange={setCategoria}
             placeholder="es. Sneakers, Felpa, Pantalone..."
-            style={{ background: '#0B1F1A', border: '1.5px solid #1B3A34', borderRadius: 12, padding: '14px 16px', color: '#F8FAFC', fontSize: 15, outline: 'none' }}
           />
         </div>
 
-        {error && (
-          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1.5px solid #EF4444', borderRadius: 12, padding: '12px 16px', color: '#EF4444', fontSize: 14 }}>
-            {error}
-          </div>
-        )}
+        {error && <ErrorBox message={error} />}
 
-        <button
+        <PrimaryButton
           type="submit"
           disabled={loading || success}
+          fullWidth
           style={{
             marginTop: 8,
-            width: '100%',
-            background: success ? '#059669' : loading ? '#065F46' : '#10B981',
-            border: 'none',
-            borderRadius: 16,
-            color: 'white',
-            fontSize: 16,
-            fontWeight: 700,
-            padding: '16px',
-            cursor: loading || success ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 24px rgba(16,185,129,0.25)',
+            background: success ? colors.accentDark : loading ? '#065F46' : colors.accentBright,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -268,13 +226,13 @@ export default function NuovoModelloPage() {
           {success ? (
             <>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5 13l4 4L19 7" stroke={colors.onAccent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Modello aggiunto!
             </>
           ) : loading ? 'Caricamento...' : 'Aggiungi modello'}
-        </button>
+        </PrimaryButton>
       </form>
-    </div>
+    </PageShell>
   )
 }

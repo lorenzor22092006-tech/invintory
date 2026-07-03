@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { supabase, parseEuro } from '@/lib/supabase'
 import { KpiDashboard } from '@/lib/types'
+import { isDemoMode } from '@/lib/demo'
+import { getDemoKpi } from '@/lib/demo-data'
 
 export async function GET() {
+  if (isDemoMode()) {
+    return NextResponse.json(getDemoKpi())
+  }
+
   try {
     const [{ data: stock }, { data: vendite }] = await Promise.all([
       supabase.from('stock').select('esito, prezzo_acquisto, scadenza_reso'),

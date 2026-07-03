@@ -2,6 +2,21 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { CSSProperties } from 'react'
+import {
+  PageShell,
+  PageHeader,
+  BackButton,
+  PrimaryButton,
+  SecondaryButton,
+  FormLabel,
+  FormInput,
+  ErrorBox,
+  Skeleton,
+  colors,
+  S,
+} from '@/components/ui'
+import { radius, shadow } from '@/lib/theme'
 
 interface StockItem {
   sku: string
@@ -10,31 +25,24 @@ interface StockItem {
   taglia: string
 }
 
-const triggerBase: React.CSSProperties = {
-  width: '100%',
+const triggerBase: CSSProperties = {
+  ...S.input,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 10,
-  background: '#061311',
-  border: '1.5px solid #1B3A34',
-  borderRadius: 12,
-  color: '#F8FAFC',
-  fontSize: 15,
-  padding: '12px 14px',
   cursor: 'pointer',
   textAlign: 'left',
-  boxSizing: 'border-box',
 }
 
-const listPanel: React.CSSProperties = {
+const listPanel: CSSProperties = {
   marginTop: 8,
   maxHeight: 280,
   overflowY: 'auto',
-  borderRadius: 12,
-  border: '1.5px solid #1B3A34',
-  background: '#0B1F1A',
-  boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+  borderRadius: radius.md,
+  border: `1px solid ${colors.border}`,
+  background: colors.bgCard,
+  boxShadow: shadow.card,
 }
 
 export default function RegistraVenditaPage() {
@@ -94,37 +102,19 @@ export default function RegistraVenditaPage() {
     [skusInStock, sku]
   )
 
-  const optionRow = (selected: boolean): React.CSSProperties => ({
+  const optionRow = (selected: boolean): CSSProperties => ({
     width: '100%',
     textAlign: 'left',
     padding: '12px 14px',
     border: 'none',
-    borderBottom: '1px solid #102A24',
-    background: selected ? 'rgba(16, 185, 129, 0.18)' : 'transparent',
-    color: '#F8FAFC',
+    borderBottom: `1px solid ${colors.border}`,
+    background: selected ? colors.accentSoft : 'transparent',
+    color: colors.text,
     fontSize: 15,
     cursor: 'pointer',
   })
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    background: '#061311',
-    border: '1.5px solid #1B3A34',
-    borderRadius: 12,
-    color: '#F8FAFC',
-    fontSize: 15,
-    padding: '12px 14px',
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: 13,
-    fontWeight: 600,
-    color: '#94A3B8',
-    marginBottom: 6,
-  }
+  const inputStyle: CSSProperties = S.input
 
   const registra = async () => {
     setError(null)
@@ -166,77 +156,37 @@ export default function RegistraVenditaPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: '100dvh',
-        background: '#061311',
-        maxWidth: 430,
-        margin: '0 auto',
-        padding: '20px 20px 100px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            border: '1.5px solid #1B3A34',
-            background: '#0B1F1A',
-            color: '#F8FAFC',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          aria-label="Indietro"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path
-              d="M15 18l-6-6 6-6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 700,
-            color: '#F8FAFC',
-            margin: 0,
-          }}
-        >
-          Registra vendita
-        </h1>
-      </div>
+    <PageShell style={S.pagePadForm}>
+      <PageHeader
+        title="Registra vendita"
+        back={<BackButton onClick={() => router.back()} />}
+      />
 
       {loading ? (
-        <p style={{ color: '#64748B', fontSize: 14 }}>Caricamento…</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Skeleton height={52} />
+          <Skeleton height={52} />
+          <Skeleton height={52} />
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <label style={labelStyle}>SKU</label>
+            <FormLabel>SKU</FormLabel>
             <button
               type="button"
               onClick={() => setSkuOpen((o) => !o)}
               style={{
                 ...triggerBase,
-                borderColor: skuOpen ? '#10B981' : '#1B3A34',
+                borderColor: skuOpen ? colors.accent : colors.border,
               }}
             >
-              <span style={{ color: sku ? '#F8FAFC' : '#64748B' }}>
+              <span style={{ color: sku ? colors.text : colors.textMuted }}>
                 {sku || 'Seleziona SKU…'}
               </span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path
                   d="M6 9l6 6 6-6"
-                  stroke="#10B981"
+                  stroke={colors.accent}
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -246,7 +196,7 @@ export default function RegistraVenditaPage() {
             {skuOpen ? (
               <div style={listPanel} role="listbox">
                 {skusInStock.length === 0 ? (
-                  <div style={{ padding: 14, color: '#64748B', fontSize: 14 }}>
+                  <div style={{ padding: 14, color: colors.textMuted, fontSize: 14 }}>
                     Nessun prodotto in stock disponibile
                   </div>
                 ) : (
@@ -261,7 +211,7 @@ export default function RegistraVenditaPage() {
                         style={{
                           ...optionRow(sel),
                           borderBottom:
-                            idx === skusInStock.length - 1 ? 'none' : '1px solid #102A24',
+                            idx === skusInStock.length - 1 ? 'none' : `1px solid ${colors.border}`,
                         }}
                         onClick={() => {
                           setSku(it.sku)
@@ -269,7 +219,7 @@ export default function RegistraVenditaPage() {
                         }}
                       >
                         <span style={{ fontWeight: 700 }}>{it.sku}</span>
-                        <span style={{ color: '#64748B', fontSize: 13, marginLeft: 8 }}>
+                        <span style={{ color: colors.textMuted, fontSize: 13, marginLeft: 8 }}>
                           {(it.idModello || '—') + (it.taglia ? ` · ${it.taglia}` : '')}
                         </span>
                       </button>
@@ -279,7 +229,7 @@ export default function RegistraVenditaPage() {
               </div>
             ) : null}
             {selectedCapo ? (
-              <p style={{ margin: '8px 0 0', fontSize: 12, color: '#64748B' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 12, color: colors.textMuted }}>
                 {selectedCapo.idModello || 'Modello n.d.'}
                 {selectedCapo.taglia ? ` · taglia ${selectedCapo.taglia}` : ''}
               </p>
@@ -287,32 +237,21 @@ export default function RegistraVenditaPage() {
           </div>
 
           <div>
-            <label style={labelStyle}>Prezzo vendita</label>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="es. 35 o 35,50"
+            <FormLabel>Prezzo vendita</FormLabel>
+            <FormInput
               value={prezzoVendita}
-              onChange={(e) => setPrezzoVendita(e.target.value)}
-              style={inputStyle}
+              onChange={setPrezzoVendita}
+              placeholder="es. 35 o 35,50"
             />
           </div>
 
           <div>
-            <label style={labelStyle}>Data vendita</label>
-            <input
-              type="date"
-              value={dataVendita}
-              onChange={(e) => setDataVendita(e.target.value)}
-              style={{
-                ...inputStyle,
-                colorScheme: 'dark',
-              }}
-            />
+            <FormLabel>Data vendita</FormLabel>
+            <FormInput type="date" value={dataVendita} onChange={setDataVendita} />
           </div>
 
           <div>
-            <label style={labelStyle}>Venditore (opzionale)</label>
+            <FormLabel>Venditore (opzionale)</FormLabel>
             <select
               value={venditore}
               onChange={(e) => setVenditore(e.target.value)}
@@ -328,64 +267,38 @@ export default function RegistraVenditaPage() {
                 paddingRight: 40,
               }}
             >
-              <option value="" style={{ background: '#0B1F1A', color: '#94A3B8' }}>
+              <option value="" style={{ background: colors.bgCard, color: colors.textSecondary }}>
                 Nessuno
               </option>
               {venditori.map((v) => (
-                <option key={v} value={v} style={{ background: '#0B1F1A', color: '#F8FAFC' }}>
+                <option key={v} value={v} style={{ background: colors.bgCard, color: colors.text }}>
                   {v}
                 </option>
               ))}
             </select>
           </div>
 
-          {error ? (
-            <p style={{ color: '#EF4444', fontSize: 14, margin: 0 }}>{error}</p>
-          ) : null}
+          {error ? <ErrorBox message={error} /> : null}
 
-          <button
-            type="button"
+          <PrimaryButton
             disabled={submitting}
             onClick={registra}
-            style={{
-              marginTop: 8,
-              width: '100%',
-              background: submitting ? '#059669' : '#10B981',
-              border: 'none',
-              borderRadius: 16,
-              color: 'white',
-              fontSize: 16,
-              fontWeight: 700,
-              padding: '16px',
-              cursor: submitting ? 'wait' : 'pointer',
-              boxShadow: '0 4px 24px rgba(16,185,129,0.25)',
-              letterSpacing: '0.04em',
-            }}
+            fullWidth
+            style={{ marginTop: 8, letterSpacing: '0.04em' }}
           >
             {submitting ? 'Registrazione…' : 'REGISTRA'}
-          </button>
+          </PrimaryButton>
 
-          <button
-            type="button"
+          <SecondaryButton
             disabled={submitting}
             onClick={() => router.back()}
-            style={{
-              width: '100%',
-              background: '#0B1F1A',
-              border: '1.5px solid #1B3A34',
-              borderRadius: 16,
-              color: '#94A3B8',
-              fontSize: 16,
-              fontWeight: 700,
-              padding: '14px',
-              cursor: submitting ? 'default' : 'pointer',
-              letterSpacing: '0.04em',
-            }}
+            fullWidth
+            style={{ letterSpacing: '0.04em' }}
           >
             ANNULLA
-          </button>
+          </SecondaryButton>
         </div>
       )}
-    </div>
+    </PageShell>
   )
 }
