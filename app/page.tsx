@@ -52,6 +52,7 @@ export default function HomePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [vendite, setVendite] = useState<Vendita[]>([])
   const [venditeLoading, setVenditeLoading] = useState(true)
+  const [expandedSku, setExpandedSku] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/vendite')
@@ -216,27 +217,70 @@ export default function HomePage() {
     )
   }
 
+  /* Riga mobile compatta: SKU, modello, giorni. Tap → dettagli a discesa. */
+  function MobileStockRow({ item, danger }: { item: StockItem; danger?: boolean }) {
+    const open = expandedSku === item.sku
+    const giorniLabel = danger
+      ? `${Math.abs(item.giorniRimanenti ?? 0)} gg fa`
+      : getScadenzaLabel(item.giorniRimanenti)
+    const giorniColor = danger ? colors.danger : getScadenzaColor(item.giorniRimanenti)
+    return (
+      <div style={{ borderBottom: `1px solid ${colors.border}` }}>
+        <div
+          onClick={() => setExpandedSku(open ? null : item.sku)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '13px 16px',
+            cursor: 'pointer',
+            background: danger ? colors.dangerSoft : 'transparent',
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 800, color: colors.accentBright, minWidth: 36 }}>{item.sku}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {item.idModello || '—'}
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: giorniColor, flexShrink: 0 }}>{giorniLabel}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+            <path d="M6 9l6 6 6-6" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        {open && (
+          <div style={{ padding: '2px 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 12px', fontSize: 12 }}>
+              <div>
+                <div style={{ color: colors.textMuted, marginBottom: 2 }}>Taglia</div>
+                <div style={{ color: colors.text, fontWeight: 600 }}>{item.taglia || 'n.d.'}</div>
+              </div>
+              <div>
+                <div style={{ color: colors.textMuted, marginBottom: 2 }}>Scadenza reso</div>
+                <div style={{ color: colors.text, fontWeight: 600 }}>{item.scadenzaReso || '—'}</div>
+              </div>
+              <div>
+                <div style={{ color: colors.textMuted, marginBottom: 2 }}>Prezzo acquisto</div>
+                <div style={{ color: colors.text, fontWeight: 600 }}>{item.prezzoAcquisto || '—'}</div>
+              </div>
+              <div>
+                <div style={{ color: colors.textMuted, marginBottom: 2 }}>N. ordine</div>
+                <div style={{ color: colors.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.numeroOrdine || '—'}</div>
+              </div>
+            </div>
+            <SecondaryButton
+              fullWidth
+              style={{ padding: '10px 16px', fontSize: 13 }}
+              onClick={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)}
+            >
+              Modifica prodotto
+            </SecondaryButton>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <PageShell>
-      {/* FAB mobile: registra vendita (stile design, animato) */}
-      <button
-        type="button"
-        onClick={() => router.push('/vendite/nuova')}
-        className="inv-mobile-only inv-btn inv-btn-primary inv-fab"
-        style={{
-          position: 'fixed',
-          bottom: 'var(--inv-fab-bottom)',
-          right: 18,
-          zIndex: 45,
-          padding: '13px 22px',
-          fontSize: 13,
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
-        + Vendita
-      </button>
-
       {loadError && (
         <div style={{ marginBottom: 20 }}>
           <ErrorBox message={loadError} />
@@ -245,20 +289,20 @@ export default function HomePage() {
       <PageHeader
         title="Dashboard"
         subtitle="Gestisci il tuo stock Rubinos Sellers"
-        filters={
-          <ChipRow>
-            <Chip label={loading ? '…' : `${inScadenza.length} in scadenza`} active />
-            <Chip label={loading ? '…' : `${urgentCount} urgenti`} />
-            <Chip label={loading ? '…' : `${scaduti.length} scaduti`} onClick={() => setMostraScaduti((v) => !v)} />
-          </ChipRow>
-        }
-        action={
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <SecondaryButton onClick={() => router.push('/stock/nuovo')}>+ Prodotto</SecondaryButton>
-            <PrimaryButton onClick={() => router.push('/vendite/nuova')}>+ Registra Vendita</PrimaryButton>
-          </div>
-        }
       />
+
+      {/* AZIONI RAPIDE — prima cosa visibile, sopra il grafico */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <PrimaryButton style={{ flex: 1, padding: '13px 10px' }} onClick={() => router.push('/vendite/nuova')}>
+          + Vendita
+        </PrimaryButton>
+        <SecondaryButton style={{ flex: 1, padding: '13px 10px' }} onClick={() => router.push('/resi/nuovo')}>
+          + Reso
+        </SecondaryButton>
+        <SecondaryButton style={{ flex: 1, padding: '13px 10px' }} onClick={() => router.push('/stock/nuovo')}>
+          + Prodotto
+        </SecondaryButton>
+      </div>
 
       {/* CHART + SIDE COLUMN */}
       <div className="inv-grid-kpi" style={{ marginBottom: 24 }}>
@@ -304,17 +348,6 @@ export default function HomePage() {
                 ))}
               </div>
             )}
-          </Card>
-
-          <Card style={{ padding: '20px 22px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
-              Azioni rapide
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <SecondaryButton fullWidth onClick={() => router.push('/resi/nuovo')}>Registra Reso</SecondaryButton>
-              <SecondaryButton fullWidth onClick={() => router.push('/taglie')}>Vai ai Modelli</SecondaryButton>
-              <SecondaryButton fullWidth onClick={() => router.push('/bilancio')}>Apri Bilancio</SecondaryButton>
-            </div>
           </Card>
         </div>
       </div>
@@ -363,6 +396,15 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* FILTRI — subito sopra le liste che filtrano */}
+      <div style={{ marginBottom: 14 }}>
+        <ChipRow>
+          <Chip label={loading ? '…' : `${inScadenza.length} in scadenza`} active />
+          <Chip label={loading ? '…' : `${urgentCount} urgenti`} />
+          <Chip label={loading ? '…' : `${scaduti.length} scaduti`} onClick={() => setMostraScaduti((v) => !v)} />
+        </ChipRow>
+      </div>
+
       {/* SCADUTI TABLE */}
       {mostraScaduti && (
         <div style={{ marginBottom: 24 }}>
@@ -372,14 +414,23 @@ export default function HomePage() {
           ) : scaduti.length === 0 ? (
             <EmptyState icon="✓" message="Nessun articolo scaduto" />
           ) : (
-            <TableScroll>
-              <div style={S.tableHeader}>
-                <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Stato</span><span />
+            <>
+              <div className="inv-mobile-only" style={{ flexDirection: 'column' }}>
+                {scaduti.map((item) => (
+                  <MobileStockRow key={item.sku} item={item} danger />
+                ))}
               </div>
-              {scaduti.map((item) => (
-                <TableRow key={item.sku} item={item} danger onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
-              ))}
-            </TableScroll>
+              <div className="inv-desktop-only" style={{ flexDirection: 'column' }}>
+                <TableScroll>
+                  <div style={S.tableHeader}>
+                    <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Stato</span><span />
+                  </div>
+                  {scaduti.map((item) => (
+                    <TableRow key={item.sku} item={item} danger onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
+                  ))}
+                </TableScroll>
+              </div>
+            </>
           )}
         </SectionCard>
         </div>
@@ -421,14 +472,23 @@ export default function HomePage() {
         ) : inScadenza.length === 0 ? (
           <EmptyState icon="✓" message="Nessun prodotto in scadenza" />
         ) : (
-          <TableScroll>
-            <div style={S.tableHeader}>
-              <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Giorni</span><span />
+          <>
+            <div className="inv-mobile-only" style={{ flexDirection: 'column' }}>
+              {inScadenza.map((item) => (
+                <MobileStockRow key={item.sku} item={item} />
+              ))}
             </div>
-            {inScadenza.map((item) => (
-              <TableRow key={item.sku} item={item} onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
-            ))}
-          </TableScroll>
+            <div className="inv-desktop-only" style={{ flexDirection: 'column' }}>
+              <TableScroll>
+                <div style={S.tableHeader}>
+                  <span>SKU</span><span>Modello</span><span>Taglia</span><span>Scadenza</span><span>Giorni</span><span />
+                </div>
+                {inScadenza.map((item) => (
+                  <TableRow key={item.sku} item={item} onEdit={() => router.push(`/stock/${encodeURIComponent(item.sku)}/modifica`)} />
+                ))}
+              </TableScroll>
+            </div>
+          </>
         )}
       </SectionCard>
     </PageShell>

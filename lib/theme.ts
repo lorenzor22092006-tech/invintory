@@ -58,9 +58,9 @@ export const liquid = {
   gradient:
     'linear-gradient(172deg, rgba(165,245,255,0.52) 0%, rgba(0,215,240,0.78) 18%, rgba(0,185,215,0.94) 44%, rgba(0,148,185,1) 68%, rgba(0,102,140,1) 100%)',
   shadow:
-    'inset 0 3px 10px rgba(255,255,255,0.48), inset 0 -5px 12px rgba(0,0,0,0.55), inset 2px 0 5px rgba(255,255,255,0.08), 0 0 0 1.5px rgba(0,38,58,0.95), 0 0 0 4px rgba(0,185,215,0.10), 0 12px 44px rgba(0,190,218,0.48), 0 3px 18px rgba(0,0,0,0.7)',
+    'inset 0 2px 6px rgba(255,255,255,0.35), inset 0 -3px 8px rgba(0,20,30,0.35), 0 6px 20px rgba(0,190,218,0.22)',
   shadowSmall:
-    'inset 0 2px 6px rgba(255,255,255,0.42), inset 0 -3px 8px rgba(0,0,0,0.48), 0 0 0 1.5px rgba(0,38,58,0.9), 0 6px 24px rgba(0,190,218,0.4), 0 2px 10px rgba(0,0,0,0.6)',
+    'inset 0 1.5px 4px rgba(255,255,255,0.3), inset 0 -2px 6px rgba(0,20,30,0.3), 0 4px 14px rgba(0,190,218,0.18)',
 } as const
 
 export const layout = {

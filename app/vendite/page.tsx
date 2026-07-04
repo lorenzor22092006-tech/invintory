@@ -34,6 +34,7 @@ export default function VenditePage() {
   const [search, setSearch] = useState('')
   const [venditori, setVenditori] = useState<string[]>([])
 
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
   const [editTarget, setEditTarget] = useState<VenditaExt | null>(null)
   const [editForm, setEditForm] = useState({ prezzoVendita: '', dataVendita: '', venditore: '' })
   const [saving, setSaving] = useState(false)
@@ -145,6 +146,84 @@ export default function VenditePage() {
         />
       ) : (
         <div style={{ ...S.card, overflow: 'hidden' }}>
+          {/* MOBILE: righe compatte, tap per i dettagli */}
+          <div className="inv-mobile-only" style={{ flexDirection: 'column' }}>
+            {filtered.map((v, i) => {
+              const open = expandedIdx === i
+              return (
+                <div key={i} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
+                  <div
+                    onClick={() => setExpandedIdx(open ? null : i)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', cursor: 'pointer' }}
+                  >
+                    <span
+                      style={{
+                        background: colors.accentSoft,
+                        border: `1px solid ${colors.accent}`,
+                        borderRadius: radius.sm,
+                        padding: '3px 8px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: colors.accentBright,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {v.sku}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {v.idModello || '—'}
+                      </div>
+                      <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>{v.dataVendita}</div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: colors.accentBright }}>{euro(v.prezzoVendita)}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: colors.success, marginTop: 2 }}>netto {euro(v.guadagnoNetto)}</div>
+                    </div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }}>
+                      <path d="M6 9l6 6 6-6" stroke={colors.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  {open && (
+                    <div style={{ padding: '2px 16px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 12px', fontSize: 12 }}>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Taglia</div>
+                          <div style={{ color: colors.text, fontWeight: 600 }}>{v.taglia || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Venditore</div>
+                          <div style={{ color: colors.text, fontWeight: 600 }}>{v.venditore || 'Nessuno'}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Prezzo acquisto</div>
+                          <div style={{ color: colors.text, fontWeight: 600 }}>{euro(v.prezzoAcquisto)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Fee venditore</div>
+                          <div style={{ color: colors.text, fontWeight: 600 }}>{euro(v.fee)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Guadagno lordo</div>
+                          <div style={{ color: colors.text, fontWeight: 600 }}>{euro(v.guadagnoLordo)}</div>
+                        </div>
+                        <div>
+                          <div style={{ color: colors.textMuted, marginBottom: 2 }}>Guadagno netto</div>
+                          <div style={{ color: colors.success, fontWeight: 700 }}>{euro(v.guadagnoNetto)}</div>
+                        </div>
+                      </div>
+                      <SecondaryButton fullWidth style={{ padding: '10px 16px', fontSize: 13 }} onClick={() => openEdit(v)}>
+                        Modifica vendita
+                      </SecondaryButton>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* DESKTOP: tabella completa */}
+          <div className="inv-desktop-only" style={{ flexDirection: 'column' }}>
           <div className="inv-table-wrap"><div className="inv-table-min">
           <div
             style={{
@@ -218,6 +297,7 @@ export default function VenditePage() {
             </div>
           ))}
           </div></div>
+          </div>
         </div>
       )}
 

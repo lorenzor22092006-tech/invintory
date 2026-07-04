@@ -206,27 +206,16 @@ export default function SalesChart({ vendite, loading }: { vendite: Vendita[]; l
 
   return (
     <div style={{ padding: '20px 22px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Header: title, big number, delta, period toggle */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Vendite
-          </div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 4 }}>
-            <span style={{ fontSize: 34, fontWeight: 800, color: colors.text, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              {loading ? '…' : totalInWindow}
-            </span>
-            {deltaPct !== null && !loading && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: deltaPct >= 0 ? colors.success : colors.danger }}>
-                {deltaPct >= 0 ? '↑' : '↓'} {Math.abs(deltaPct).toFixed(1)}%
-              </span>
-            )}
-          </div>
+      {/* Header a layout fisso: label + toggle sulla prima riga, numero sotto.
+          Il toggle non si sposta mai cambiando periodo. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>
+          Vendite
         </div>
-        <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 999 }} className="inv-glass">
+        <div style={{ display: 'flex', gap: 2, padding: 3, borderRadius: 999, flexShrink: 0 }} className="inv-glass">
           {(
             [
-              ['giorno', '30 giorni'],
+              ['giorno', '30 gg'],
               ['mese', '12 mesi'],
               ['anno', 'Anni'],
             ] as [Period, string][]
@@ -236,11 +225,12 @@ export default function SalesChart({ vendite, loading }: { vendite: Vendita[]; l
               type="button"
               onClick={() => setPeriod(p)}
               style={{
-                padding: '6px 13px',
+                padding: '6px 12px',
                 borderRadius: 999,
                 fontSize: 12,
                 fontWeight: 700,
                 fontFamily: 'inherit',
+                whiteSpace: 'nowrap',
                 color: period === p ? colors.accentBright : colors.textMuted,
                 background: period === p ? colors.accentSoft : 'transparent',
                 border: period === p ? `1px solid ${colors.borderStrong}` : '1px solid transparent',
@@ -251,6 +241,16 @@ export default function SalesChart({ vendite, loading }: { vendite: Vendita[]; l
             </button>
           ))}
         </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minHeight: 36 }}>
+        <span style={{ fontSize: 34, fontWeight: 800, color: colors.text, letterSpacing: '-0.03em', lineHeight: 1 }}>
+          {loading ? '…' : totalInWindow}
+        </span>
+        {deltaPct !== null && !loading && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: deltaPct >= 0 ? colors.success : colors.danger }}>
+            {deltaPct >= 0 ? '↑' : '↓'} {Math.abs(deltaPct).toFixed(1)}%
+          </span>
+        )}
       </div>
 
       {/* Plot */}
