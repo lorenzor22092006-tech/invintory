@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/lib/use-session";
 
 const IconHome = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -44,7 +45,7 @@ const IconTeam = () => (
   </svg>
 );
 
-const navItems = [
+const ceoItems = [
   { href: "/",         label: "Home",    Icon: IconHome },
   { href: "/taglie",   label: "Size",    Icon: IconSize },
   { href: "/vendite",  label: "Vendite", Icon: IconVendite },
@@ -52,8 +53,19 @@ const navItems = [
   { href: "/team",     label: "Team",    Icon: IconTeam },
 ];
 
+const venditoreItems = [
+  { href: "/venditore",          label: "Home",    Icon: IconHome },
+  { href: "/taglie",             label: "Size",    Icon: IconSize },
+  { href: "/venditore/vendite",  label: "Vendite", Icon: IconVendite },
+  { href: "/venditore/bilancio", label: "Bilancio",Icon: IconBilancio },
+];
+
 export default function BottomNav() {
   const pathname = usePathname();
+  const session = useSession();
+
+  if (pathname === "/login" || session === undefined || session === null) return null;
+  const navItems = session.role === "venditore" ? venditoreItems : ceoItems;
 
   return (
     <nav

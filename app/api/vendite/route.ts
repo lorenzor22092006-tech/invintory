@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabase, parseEuro } from '@/lib/supabase'
 import { isDemoMode } from '@/lib/demo'
 import { demoVendite } from '@/lib/demo-data'
+import { getSession } from '@/lib/auth'
 
 export async function GET() {
   if (isDemoMode()) {
@@ -9,10 +10,13 @@ export async function GET() {
   }
 
   try {
-    const { data, error } = await supabase
-      .from('vendite')
-      .select('*')
-      .order('id')
+    const session = await getSession()
+    let query = supabase.from('vendite').select('*').order('id')
+    // i venditori vedono solo le proprie vendite
+    if (session?.role === 'venditore') {
+      query = query.eq('venditore', session.nome)
+    }
+    const { data, error } = await query
 
     if (error) throw error
 
@@ -44,7 +48,10 @@ export async function POST(request: Request) {
         ? body.prezzoVendita
         : parseFloat(String(body.prezzoVendita ?? '').replace(',', '.')) || 0
     const dataVenditaRaw = String(body.dataVendita ?? '').trim()
-    const venditore = String(body.venditore ?? '').trim()
+    const session = await getSession()
+    // un venditore registra vendite solo a proprio nome
+    const venditore =
+      session?.role === 'venditore' ? session.nome : String(body.venditore ?? '').trim()
 
     if (!skuRaw) return NextResponse.json({ error: 'SKU obbligatorio' }, { status: 400 })
     if (!prezzoVendita || prezzoVendita <= 0)
@@ -125,6 +132,15 @@ export async function PATCH(request: Request) {
 
     if (fetchError) throw fetchError
     if (!existing) return NextResponse.json({ error: 'Vendita non trovata' }, { status: 404 })
+
+    const session = await getSession()
+    if (session?.role === 'venditore') {
+      if ((existing.venditore || '') !== session.nome) {
+        return NextResponse.json({ error: 'Puoi modificare solo le tue vendite' }, { status: 403 })
+      }
+      // il venditore non può riassegnare la vendita
+      body.venditore = undefined
+    }
 
     const prezzoAcquisto = Number(existing.prezzo_acquisto) || 0
     const finalPrezzoVendita =

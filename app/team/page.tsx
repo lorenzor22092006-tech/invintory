@@ -48,6 +48,13 @@ export default function TeamPage() {
   // form categoria
   const [fCat, setFCat] = useState('')
 
+  // credenziali accesso venditore
+  const [credTarget, setCredTarget] = useState<string | null>(null)
+  const [credEmail, setCredEmail] = useState('')
+  const [credResult, setCredResult] = useState<{ email: string; password: string } | null>(null)
+  const [credLoading, setCredLoading] = useState(false)
+  const [credError, setCredError] = useState<string | null>(null)
+
   // password gate
   const [pendingAction, setPendingAction] = useState<Sheet>(null)
   const [pwInput, setPwInput] = useState('')
@@ -309,6 +316,21 @@ export default function TeamPage() {
                   >
                     {v.feePercentuale}%
                   </span>
+
+                  <IconButton
+                    size={34}
+                    label={`Credenziali accesso ${v.nome}`}
+                    onClick={() => {
+                      setCredTarget(v.nome)
+                      setCredEmail('')
+                      setCredResult(null)
+                      setCredError(null)
+                    }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                    </svg>
+                  </IconButton>
 
                   <IconButton
                     size={34}
@@ -630,6 +652,109 @@ export default function TeamPage() {
                 {saving ? 'Eliminando…' : 'Elimina'}
               </PrimaryButton>
             </div>
+          </>
+        )}
+      </BottomSheet>
+
+      {/* ── BOTTOM SHEET: credenziali accesso venditore ─────────────────── */}
+      <BottomSheet
+        open={!!credTarget}
+        onClose={() => setCredTarget(null)}
+      >
+        {credTarget && (
+          <>
+            <div style={{ marginBottom: 18 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: colors.text }}>
+                Accesso app — {credTarget}
+              </div>
+              <div style={{ fontSize: 13, color: colors.textMuted, marginTop: 4, lineHeight: 1.5 }}>
+                Genera email e password che il venditore userà per entrare nella sua dashboard.
+              </div>
+            </div>
+
+            {credResult ? (
+              <>
+                <div
+                  style={{
+                    background: colors.accentSoft,
+                    border: `1px solid ${colors.borderStrong}`,
+                    borderRadius: 16,
+                    padding: '16px 18px',
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: colors.text, marginTop: 4, wordBreak: 'break-all' }}>{credResult.email}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 14 }}>Password</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: colors.accentBright, marginTop: 4, letterSpacing: '0.06em', fontFamily: 'ui-monospace, monospace' }}>
+                    {credResult.password}
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: colors.warning, marginBottom: 16, lineHeight: 1.5 }}>
+                  ⚠️ Copia e invia subito queste credenziali al venditore: la password non sarà più visibile.
+                  Puoi rigenerarla in qualsiasi momento da qui.
+                </div>
+                <PrimaryButton
+                  fullWidth
+                  onClick={() => {
+                    navigator.clipboard?.writeText(`Email: ${credResult.email}\nPassword: ${credResult.password}`).catch(() => {})
+                    setCredTarget(null)
+                  }}
+                >
+                  Copia e chiudi
+                </PrimaryButton>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  <FormLabel>Email del venditore</FormLabel>
+                  <FormInput
+                    type="email"
+                    value={credEmail}
+                    onChange={setCredEmail}
+                    placeholder="nome@esempio.com"
+                  />
+                </div>
+
+                {credError && (
+                  <div style={{ marginBottom: 14 }}>
+                    <ErrorBox message={credError} />
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <SecondaryButton onClick={() => setCredTarget(null)} disabled={credLoading} style={{ flex: 1 }}>
+                    Annulla
+                  </SecondaryButton>
+                  <PrimaryButton
+                    onClick={async () => {
+                      setCredLoading(true)
+                      setCredError(null)
+                      try {
+                        const res = await fetch('/api/config/accesso', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ nome: credTarget, email: credEmail }),
+                        })
+                        const data = await res.json()
+                        if (!res.ok) {
+                          setCredError(data.error || 'Errore generazione credenziali')
+                        } else {
+                          setCredResult({ email: data.email, password: data.password })
+                        }
+                      } catch {
+                        setCredError('Errore di rete. Riprova.')
+                      }
+                      setCredLoading(false)
+                    }}
+                    disabled={credLoading || !credEmail.trim()}
+                    style={{ flex: 1 }}
+                  >
+                    {credLoading ? 'Generazione…' : 'Genera password'}
+                  </PrimaryButton>
+                </div>
+              </>
+            )}
           </>
         )}
       </BottomSheet>

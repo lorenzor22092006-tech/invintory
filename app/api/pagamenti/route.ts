@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
+import { requireCeo } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
 export async function GET() {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const { data, error } = await supabase
       .from('pagamenti_venditori')
@@ -24,6 +27,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const body = await request.json()
     const venditore = String(body.venditore ?? '').trim()

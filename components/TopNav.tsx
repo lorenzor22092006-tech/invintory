@@ -1,13 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { DiscoverNav } from "@/components/ui/discover-button";
 import { colors, layout, radius } from "@/lib/theme";
+import { useSession, logout } from "@/lib/use-session";
 
 const showDemoBadge = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 
 export default function TopNav() {
   const router = useRouter();
+  const pathname = usePathname();
+  const session = useSession();
+
+  if (pathname === "/login") return null;
+  const isVenditore = session?.role === "venditore";
+  const homeHref = isVenditore ? "/venditore" : "/";
 
   return (
     <header
@@ -35,7 +42,7 @@ export default function TopNav() {
         {/* Desktop: logo */}
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push(homeHref)}
           className="inv-desktop-only"
           style={{
             display: "flex",
@@ -71,7 +78,7 @@ export default function TopNav() {
         {/* Mobile: saluto stile design (avatar liquid + Bentornato) */}
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => router.push(homeHref)}
           className="inv-mobile-only"
           style={{
             alignItems: "center",
@@ -101,7 +108,7 @@ export default function TopNav() {
                 "inset 0 2px 5px rgba(255,255,255,0.44), inset 0 -3px 6px rgba(0,0,0,0.5), 0 0 0 1.5px rgba(0,38,58,0.9), 0 0 0 3.5px rgba(0,185,215,0.22), 0 4px 14px rgba(0,0,0,0.6)",
             }}
           >
-            RS
+            {isVenditore && session?.nome ? session.nome.charAt(0).toUpperCase() : "RS"}
           </span>
           <span style={{ textAlign: "left", minWidth: 0 }}>
             <span
@@ -125,13 +132,13 @@ export default function TopNav() {
                 lineHeight: 1.2,
               }}
             >
-              Rubinos Sellers
+              {isVenditore && session?.nome ? session.nome : "Rubinos Sellers"}
             </span>
           </span>
         </button>
 
         <div className="inv-desktop-only" style={{ flex: 1, minWidth: 0 }}>
-          <DiscoverNav />
+          <DiscoverNav role={session?.role} />
         </div>
 
         <div
@@ -159,7 +166,33 @@ export default function TopNav() {
               Demo data
             </span>
           )}
-          {/* Mobile: ghost circles (impostazioni) */}
+          {/* Logout (mobile + desktop) */}
+          <button
+            type="button"
+            onClick={() => logout()}
+            aria-label="Esci"
+            className="inv-btn-glass"
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "rgba(255,255,255,0.6)",
+              padding: 0,
+            }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+
+          {/* Mobile: ghost circles (impostazioni, solo CEO) */}
+          {!isVenditore && (
           <button
             type="button"
             onClick={() => router.push("/config")}
@@ -181,6 +214,7 @@ export default function TopNav() {
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
             </svg>
           </button>
+          )}
 
           {/* Desktop: avatar liquid */}
           <div

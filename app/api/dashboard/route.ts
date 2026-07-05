@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { requireCeo } from '@/lib/auth'
 import { supabase, parseEuro } from '@/lib/supabase'
 import { KpiDashboard } from '@/lib/types'
 import { isDemoMode } from '@/lib/demo'
 import { getDemoKpi } from '@/lib/demo-data'
 
 export async function GET() {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   if (isDemoMode()) {
     return NextResponse.json(getDemoKpi())
   }

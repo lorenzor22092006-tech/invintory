@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCeo } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { isDemoMode } from '@/lib/demo'
 import { demoConfig, demoTaglieItems } from '@/lib/demo-data'
@@ -27,6 +28,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const { tipo, valore, fee } = await request.json()
 
@@ -65,6 +68,8 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const body = await request.json()
     const { tipo, nomeOriginale, nome, fee } = body
@@ -99,6 +104,8 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const body = await request.json()
     const { tipo, nome } = body

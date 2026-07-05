@@ -28,7 +28,7 @@ const bubbleSpring = {
   duration: 0.4,
 };
 
-const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
+const CEO_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/", label: "Home", Icon: Home },
   { href: "/taglie", label: "Size", Icon: Briefcase },
   { href: "/vendite", label: "Vendite", Icon: DollarSign },
@@ -36,7 +36,15 @@ const NAV_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/team", label: "Team", Icon: Users },
 ];
 
-export function DiscoverNav() {
+const VENDITORE_ITEMS: { href: string; label: string; Icon: LucideIcon }[] = [
+  { href: "/venditore", label: "Home", Icon: Home },
+  { href: "/taglie", label: "Size", Icon: Briefcase },
+  { href: "/venditore/vendite", label: "Vendite", Icon: DollarSign },
+  { href: "/venditore/bilancio", label: "Bilancio", Icon: FileText },
+];
+
+export function DiscoverNav({ role }: { role?: "ceo" | "venditore" }) {
+  const NAV_ITEMS = role === "venditore" ? VENDITORE_ITEMS : CEO_ITEMS;
   const pathname = usePathname();
   const router = useRouter();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);

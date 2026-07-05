@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { requireCeo } from '@/lib/auth'
 import { readSheet } from '@/lib/sheets'
 import { supabase, parseEuro } from '@/lib/supabase'
 
@@ -7,6 +8,8 @@ function parseEuroStr(val: string): number {
 }
 
 export async function POST() {
+  if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+
   try {
     const results: Record<string, unknown> = {}
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from '@/lib/use-session'
 import type { CSSProperties } from 'react'
 import {
   PageShell,
@@ -59,6 +60,8 @@ export default function RegistraVenditaPage() {
     return t.toISOString().slice(0, 10)
   })
   const [venditore, setVenditore] = useState('')
+  const session = useSession()
+  const isVenditore = session?.role === 'venditore'
   const [skuOpen, setSkuOpen] = useState(false)
 
   useEffect(() => {
@@ -251,7 +254,12 @@ export default function RegistraVenditaPage() {
           </div>
 
           <div>
-            <FormLabel>Venditore (opzionale)</FormLabel>
+            <FormLabel>{isVenditore ? 'Venditore' : 'Venditore (opzionale)'}</FormLabel>
+            {isVenditore ? (
+              <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', color: colors.text, fontWeight: 700 }}>
+                {session?.nome}
+              </div>
+            ) : (
             <select
               value={venditore}
               onChange={(e) => setVenditore(e.target.value)}
@@ -276,6 +284,7 @@ export default function RegistraVenditaPage() {
                 </option>
               ))}
             </select>
+            )}
           </div>
 
           {error ? <ErrorBox message={error} /> : null}
