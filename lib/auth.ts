@@ -2,7 +2,10 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 
 export const SESSION_COOKIE = 'inv_session'
-const SESSION_DAYS = 30
+/** Durata quando l'utente NON spunta "ricorda" (sessione breve) */
+const SESSION_DAYS_DEFAULT = 1
+/** Durata con "ricorda questo dispositivo" */
+const SESSION_DAYS_REMEMBER = 14
 
 export interface Session {
   role: 'ceo' | 'venditore'
@@ -26,10 +29,14 @@ function sign(payload: string): string {
   return createHmac('sha256', getSecret()).update(payload).digest('base64url')
 }
 
-export function createSessionToken(data: Omit<Session, 'exp'>): string {
+export function sessionDays(remember: boolean): number {
+  return remember ? SESSION_DAYS_REMEMBER : SESSION_DAYS_DEFAULT
+}
+
+export function createSessionToken(data: Omit<Session, 'exp'>, remember = false): string {
   const session: Session = {
     ...data,
-    exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000,
+    exp: Date.now() + sessionDays(remember) * 24 * 60 * 60 * 1000,
   }
   const payload = b64url(JSON.stringify(session))
   return `${payload}.${sign(payload)}`
@@ -66,13 +73,15 @@ export async function requireCeo(): Promise<Session | null> {
   return s?.role === 'ceo' ? s : null
 }
 
-export function sessionCookieOptions() {
+export function sessionCookieOptions(remember = false) {
   return {
     httpOnly: true,
     sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
-    maxAge: SESSION_DAYS * 24 * 60 * 60,
+    // "ricorda" → cookie persistente 14 giorni; altrimenti cookie di sessione
+    // (senza maxAge sparisce alla chiusura del browser)
+    ...(remember ? { maxAge: SESSION_DAYS_REMEMBER * 24 * 60 * 60 } : {}),
   }
 }
 

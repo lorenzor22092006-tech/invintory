@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import OrbsBackground from "@/components/OrbsBackground";
 import SetupBanner from "@/components/SetupBanner";
 import VitoButton from "@/components/VitoButton";
+import { SessionProvider } from "@/lib/use-session";
 
 // Vito AI non ancora configurato: rimetti a true per riattivare il bottone chat
 const VITO_ENABLED = false;
@@ -42,12 +43,14 @@ export default function RootLayout({
           minHeight: "100dvh",
         }}
       >
-        <OrbsBackground />
-        <TopNav />
-        <SetupBanner />
-        <main style={{ position: "relative", zIndex: 1 }}>{children}</main>
-        <BottomNav />
-        {VITO_ENABLED && <VitoButton />}
+        <SessionProvider>
+          <OrbsBackground />
+          <TopNav />
+          <SetupBanner />
+          <main style={{ position: "relative", zIndex: 1 }}>{children}</main>
+          <BottomNav />
+          {VITO_ENABLED && <VitoButton />}
+        </SessionProvider>
       </body>
     </html>
   );

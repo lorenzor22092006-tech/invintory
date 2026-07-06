@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const email = String(body.email ?? '').trim().toLowerCase()
     const password = String(body.password ?? '')
+    const remember = body.remember === true
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Inserisci email e password' }, { status: 400 })
@@ -17,9 +18,9 @@ export async function POST(request: Request) {
     const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase()
     const adminPassword = process.env.ADMIN_PASSWORD || ''
     if (adminEmail && adminPassword && email === adminEmail && password === adminPassword) {
-      const token = createSessionToken({ role: 'ceo', nome: 'CEO', email })
+      const token = createSessionToken({ role: 'ceo', nome: 'CEO', email }, remember)
       const res = NextResponse.json({ success: true, role: 'ceo' })
-      res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions())
+      res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(remember))
       return res
     }
 
@@ -44,9 +45,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account non collegato a un venditore' }, { status: 403 })
     }
 
-    const token = createSessionToken({ role: 'venditore', nome, email })
+    const token = createSessionToken({ role: 'venditore', nome, email }, remember)
     const res = NextResponse.json({ success: true, role: 'venditore', nome })
-    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions())
+    res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(remember))
     return res
   } catch {
     return NextResponse.json({ error: 'Errore durante il login' }, { status: 500 })
