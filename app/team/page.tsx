@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import PagamentiVenditoriPanel from '@/components/PagamentiVenditoriPanel'
 import {
   PageShell,
   PageHeader,
@@ -235,6 +236,11 @@ export default function TeamPage() {
         title="Team"
         subtitle={loading ? undefined : `${venditori.length} venditori · ${categorie.length} categorie`}
       />
+
+      {/* ── GESTIONE PAGAMENTI VENDITORI (sopra i box) ──────────────────── */}
+      <div style={{ marginBottom: 20 }}>
+        <PagamentiVenditoriPanel />
+      </div>
 
       <div className="inv-grid-2" style={{ alignItems: 'start' }}>
 
