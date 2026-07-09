@@ -352,6 +352,12 @@ export default function HomePage() {
         </SecondaryButton>
       </div>
 
+      <div style={{ marginBottom: 20 }}>
+        <SecondaryButton fullWidth style={{ padding: '13px 10px' }} onClick={() => router.push('/resi')}>
+          Storico resi
+        </SecondaryButton>
+      </div>
+
       {/* CHART + SIDE COLUMN */}
       <div className="inv-grid-kpi" style={{ marginBottom: 24 }}>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
