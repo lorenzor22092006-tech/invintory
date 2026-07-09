@@ -229,7 +229,7 @@ export default function RegistraResoPage() {
         back={<BackButton onClick={() => router.back()} />}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: selected.size > 0 ? 90 : 0 }}>
         <SearchBar
           value={search}
           onChange={setSearch}
@@ -310,15 +310,32 @@ export default function RegistraResoPage() {
       </div>
 
       {selected.size > 0 && (
-        <div style={{ position: 'sticky', bottom: 16, marginTop: 20 }}>
-          <PrimaryButton
-            disabled={submitting}
-            onClick={registra}
-            fullWidth
-            style={{ letterSpacing: '0.04em' }}
-          >
-            {submitting ? 'Registrazione…' : `CONFERMA RESO (${selectedItems.length} capi)`}
-          </PrimaryButton>
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 'calc(84px + env(safe-area-inset-bottom, 0px))',
+            left: 0,
+            right: 0,
+            zIndex: 60,
+            padding: '0 16px',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ maxWidth: 430, margin: '0 auto', display: 'flex', justifyContent: 'flex-end' }}>
+            <PrimaryButton
+              disabled={submitting}
+              onClick={registra}
+              style={{
+                pointerEvents: 'auto',
+                letterSpacing: '0.04em',
+                borderRadius: 30,
+                padding: '14px 22px',
+                boxShadow: '0 8px 24px rgba(16,185,129,0.35)',
+              }}
+            >
+              {submitting ? 'Registrazione…' : `CONFERMA (${selectedItems.length})`}
+            </PrimaryButton>
+          </div>
         </div>
       )}
     </PageShell>
