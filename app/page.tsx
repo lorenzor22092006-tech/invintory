@@ -53,6 +53,15 @@ export default function HomePage() {
   const [vendite, setVendite] = useState<Vendita[]>([])
   const [venditeLoading, setVenditeLoading] = useState(true)
   const [expandedSku, setExpandedSku] = useState<string | null>(null)
+  const [copiedSku, setCopiedSku] = useState<string | null>(null)
+
+  const copyOrdine = (item: StockItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!item.numeroOrdine) return
+    navigator.clipboard?.writeText(item.numeroOrdine).catch(() => {})
+    setCopiedSku(item.sku)
+    setTimeout(() => setCopiedSku((cur) => (cur === item.sku ? null : cur)), 1500)
+  }
 
   useEffect(() => {
     fetch('/api/vendite')
@@ -201,7 +210,24 @@ export default function HomePage() {
           <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {item.idModello || '—'}
           </div>
-          <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>{item.numeroOrdine || '—'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ fontSize: 12, color: colors.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.numeroOrdine || '—'}</span>
+            {item.numeroOrdine && (
+              <button
+                type="button"
+                onClick={(e) => copyOrdine(item, e)}
+                aria-label={`Copia numero ordine ${item.numeroOrdine}`}
+                title="Copia numero ordine"
+                style={{ flexShrink: 0, border: 'none', background: 'transparent', color: copiedSku === item.sku ? colors.success : colors.textMuted, cursor: 'pointer', padding: 2, display: 'flex' }}
+              >
+                {copiedSku === item.sku ? (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                ) : (
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.8" /></svg>
+                )}
+              </button>
+            )}
+          </div>
         </div>
         <span style={{ color: colors.textSecondary, fontSize: 13 }}>{item.taglia || 'n.d.'}</span>
         <span style={{ color: colors.textSecondary, fontSize: 13 }}>{item.scadenzaReso || '—'}</span>
@@ -263,7 +289,29 @@ export default function HomePage() {
               </div>
               <div>
                 <div style={{ color: colors.textMuted, marginBottom: 2 }}>N. ordine</div>
-                <div style={{ color: colors.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.numeroOrdine || '—'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: colors.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.numeroOrdine || '—'}</span>
+                  {item.numeroOrdine && (
+                    <button
+                      type="button"
+                      onClick={(e) => copyOrdine(item, e)}
+                      aria-label={`Copia numero ordine ${item.numeroOrdine}`}
+                      style={{ flexShrink: 0, border: 'none', background: copiedSku === item.sku ? colors.accentSoft : colors.bgMuted, color: copiedSku === item.sku ? colors.success : colors.textMuted, cursor: 'pointer', padding: '4px 8px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700 }}
+                    >
+                      {copiedSku === item.sku ? (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          Copiato
+                        </>
+                      ) : (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.8" /><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1" stroke="currentColor" strokeWidth="1.8" /></svg>
+                          Copia
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
             <SecondaryButton
