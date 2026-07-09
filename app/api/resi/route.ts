@@ -1,6 +1,30 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
+export async function GET() {
+  try {
+    const { data, error } = await supabase
+      .from('resi')
+      .select('*')
+      .order('id', { ascending: false })
+
+    if (error) throw error
+
+    const resi = (data || []).map((row) => ({
+      sku: row.sku || '',
+      idModello: row.id_modello || '',
+      taglia: row.taglia || '',
+      numeroOrdine: row.numero_ordine || '',
+      prezzoAcquisto: row.prezzo_acquisto || '',
+      dataReso: row.data_reso || '',
+    }))
+
+    return NextResponse.json(resi)
+  } catch (error) {
+    return NextResponse.json({ error: 'Errore lettura resi' }, { status: 500 })
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -10,12 +34,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Inserisci almeno uno SKU' }, { status: 400 })
     }
 
+    const oggi = new Date()
+    const dataReso = `${String(oggi.getDate()).padStart(2, '0')}/${String(oggi.getMonth() + 1).padStart(2, '0')}/${oggi.getFullYear()}`
+
     const risultati: { sku: string; ok: boolean; errore?: string }[] = []
 
     for (const sku of skus) {
       const { data: capo, error } = await supabase
         .from('stock')
-        .select('sku, esito')
+        .select('*')
         .eq('sku', sku)
         .maybeSingle()
 
@@ -39,9 +66,19 @@ export async function POST(request: Request) {
 
       if (updateError) {
         risultati.push({ sku, ok: false, errore: 'Errore aggiornamento' })
-      } else {
-        risultati.push({ sku, ok: true })
+        continue
       }
+
+      await supabase.from('resi').insert({
+        sku: capo.sku,
+        id_modello: capo.id_modello || '',
+        taglia: capo.taglia || '',
+        numero_ordine: capo.numero_ordine || '',
+        prezzo_acquisto: capo.prezzo_acquisto || '',
+        data_reso: dataReso,
+      })
+
+      risultati.push({ sku, ok: true })
     }
 
     const errori = risultati.filter((r) => !r.ok)

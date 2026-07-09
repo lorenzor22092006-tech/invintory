@@ -227,6 +227,16 @@ export default function RegistraResoPage() {
         title="Registra reso"
         subtitle="Seleziona i prodotti da rendere"
         back={<BackButton onClick={() => router.back()} />}
+        action={
+          <button
+            type="button"
+            onClick={() => router.push('/resi')}
+            className="inv-btn-glass"
+            style={{ ...S.chip, padding: '7px 14px', fontSize: 12 }}
+          >
+            Storico resi
+          </button>
+        }
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: selected.size > 0 ? 90 : 0 }}>

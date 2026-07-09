@@ -53,6 +53,17 @@ create table if not exists pagamenti_venditori (
   created_at timestamptz default now()
 );
 
+create table if not exists resi (
+  id bigserial primary key,
+  sku text not null,
+  id_modello text not null default '',
+  taglia text not null default '',
+  numero_ordine text not null default '',
+  prezzo_acquisto text not null default '',
+  data_reso text not null default '',
+  created_at timestamptz default now()
+);
+
 -- Disabilita RLS su tutte le tabelle (usiamo service role key lato server)
 alter table stock disable row level security;
 alter table vendite disable row level security;
@@ -60,3 +71,4 @@ alter table config_venditori disable row level security;
 alter table config_categorie disable row level security;
 alter table taglie_stock disable row level security;
 alter table pagamenti_venditori disable row level security;
+alter table resi disable row level security;
