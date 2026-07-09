@@ -1,19 +1,34 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   PageShell,
   PageHeader,
   BackButton,
   PrimaryButton,
-  FormLabel,
+  SearchBar,
   ErrorBox,
+  EmptyState,
+  Skeleton,
   SectionCard,
   colors,
   S,
 } from '@/components/ui'
 import { radius } from '@/lib/theme'
+
+interface StockItem {
+  sku: string
+  numeroOrdine: string
+  dataOrdine: string
+  prezzoAcquisto: string
+  scadenzaReso: string
+  giorniRimanenti: number | null
+  statoScadenza: string
+  esito: string
+  idModello: string
+  taglia: string
+}
 
 interface RisultatoSku {
   sku: string
@@ -21,44 +36,89 @@ interface RisultatoSku {
   errore?: string
 }
 
+const getScadenzaColor = (giorni: number | null) => {
+  if (giorni === null) return colors.textMuted
+  if (giorni <= 3) return colors.danger
+  if (giorni <= 7) return colors.warning
+  return colors.success
+}
+
+const getScadenzaLabel = (giorni: number | null) => {
+  if (giorni === null) return ''
+  if (giorni === 0) return 'Scade oggi'
+  if (giorni === 1) return '1 giorno'
+  return `${giorni} giorni`
+}
+
 export default function RegistraResoPage() {
   const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
 
-  const [skus, setSkus] = useState<string[]>([])
-  const [input, setInput] = useState('')
+  const [items, setItems] = useState<StockItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [risultati, setRisultati] = useState<RisultatoSku[] | null>(null)
 
-  const aggiungiSku = () => {
-    const val = input.trim()
-    if (!val) return
-    if (skus.includes(val)) {
-      setError(`SKU ${val} già aggiunto`)
-      return
-    }
-    setSkus((prev) => [...prev, val])
-    setInput('')
-    setError(null)
-    inputRef.current?.focus()
+  useEffect(() => {
+    fetch('/api/stock')
+      .then(async (r) => {
+        const data = await r.json()
+        if (!r.ok) {
+          setLoadError(data.error || 'Impossibile caricare lo stock')
+          setItems([])
+          setLoading(false)
+          return
+        }
+        setItems(data.items || [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoadError('Errore di rete durante il caricamento dello stock')
+        setLoading(false)
+      })
+  }, [])
+
+  const inScadenza = useMemo(() => {
+    const filtered = items.filter(
+      (item) =>
+        item.esito === 'In stock' &&
+        item.giorniRimanenti !== null &&
+        item.giorniRimanenti >= 0
+    )
+    return [...filtered].sort((a, b) => (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0))
+  }, [items])
+
+  const visibili = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return inScadenza
+    return inScadenza.filter(
+      (item) =>
+        item.sku.toLowerCase().includes(q) ||
+        item.idModello.toLowerCase().includes(q)
+    )
+  }, [inScadenza, search])
+
+  const toggleSelezione = (sku: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(sku)) next.delete(sku)
+      else next.add(sku)
+      return next
+    })
   }
 
-  const rimuoviSku = (sku: string) => {
-    setSkus((prev) => prev.filter((s) => s !== sku))
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      aggiungiSku()
-    }
-  }
+  const selectedItems = useMemo(
+    () => inScadenza.filter((item) => selected.has(item.sku)),
+    [inScadenza, selected]
+  )
 
   const registra = async () => {
     setError(null)
-    if (skus.length === 0) {
-      setError('Aggiungi almeno uno SKU')
+    if (selected.size === 0) {
+      setError('Seleziona almeno un prodotto')
       return
     }
     setSubmitting(true)
@@ -66,7 +126,7 @@ export default function RegistraResoPage() {
       const res = await fetch('/api/resi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skus }),
+        body: JSON.stringify({ skus: Array.from(selected) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok && !data.risultati) {
@@ -165,100 +225,102 @@ export default function RegistraResoPage() {
     <PageShell style={S.pagePadForm}>
       <PageHeader
         title="Registra reso"
+        subtitle="Seleziona i prodotti da rendere"
         back={<BackButton onClick={() => router.back()} />}
       />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <div>
-          <FormLabel>Aggiungi SKU</FormLabel>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              placeholder="es. 159"
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value)
-                setError(null)
-              }}
-              onKeyDown={handleKeyDown}
-              style={{ ...S.input, flex: 1 }}
-            />
-            <PrimaryButton onClick={aggiungiSku} style={{ whiteSpace: 'nowrap', padding: '12px 18px' }}>
-              + Aggiungi
-            </PrimaryButton>
-          </div>
-          <p style={{ fontSize: 12, color: colors.textMuted, margin: '6px 0 0' }}>
-            Premi Invio o tocca &quot;+ Aggiungi&quot; per ogni SKU
-          </p>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Cerca per SKU o modello…"
+          onClear={() => setSearch('')}
+        />
 
-        {skus.length > 0 && (
-          <SectionCard
-            title="SKU da rendere"
-            subtitle={`${skus.length} capi`}
-          >
-            {skus.map((sku, i) => (
-              <div
-                key={sku}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '11px 16px',
-                  borderBottom: i < skus.length - 1 ? `1px solid ${colors.border}` : 'none',
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: colors.text,
-                    background: colors.bgElevated,
-                    padding: '4px 10px',
-                    borderRadius: radius.sm,
-                  }}
-                >
-                  SKU {sku}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => rimuoviSku(sku)}
-                  style={{
-                    width: 30,
-                    height: 30,
-                    borderRadius: radius.sm,
-                    border: `1px solid ${colors.border}`,
-                    background: 'transparent',
-                    color: colors.danger,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 16,
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </SectionCard>
-        )}
-
+        {loadError && <ErrorBox message={loadError} />}
         {error && <ErrorBox message={error} />}
 
-        {skus.length > 0 && (
+        <SectionCard
+          title="Prodotti in scadenza"
+          subtitle={loading ? 'Caricamento…' : `${visibili.length} disponibili`}
+        >
+          {loading ? (
+            <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} height={52} />)}
+            </div>
+          ) : visibili.length === 0 ? (
+            <EmptyState icon="✓" message="Nessun prodotto trovato" />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {visibili.map((item, i) => {
+                const checked = selected.has(item.sku)
+                return (
+                  <div
+                    key={item.sku}
+                    onClick={() => toggleSelezione(item.sku)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '13px 16px',
+                      borderTop: i > 0 ? `1px solid ${colors.border}` : 'none',
+                      cursor: 'pointer',
+                      background: checked ? colors.accentSoft : 'transparent',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 6,
+                        border: `2px solid ${checked ? colors.accentBright : colors.border}`,
+                        background: checked ? colors.accentBright : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {checked && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                          <path d="M20 6L9 17l-5-5" stroke="#061311" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: colors.accentBright, minWidth: 34, flexShrink: 0 }}>
+                      {item.sku}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {item.idModello || '—'}
+                      </div>
+                      <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                        Taglia {item.taglia || 'n.d.'}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: getScadenzaColor(item.giorniRimanenti), flexShrink: 0 }}>
+                      {getScadenzaLabel(item.giorniRimanenti)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
+      {selected.size > 0 && (
+        <div style={{ position: 'sticky', bottom: 16, marginTop: 20 }}>
           <PrimaryButton
             disabled={submitting}
             onClick={registra}
             fullWidth
             style={{ letterSpacing: '0.04em' }}
           >
-            {submitting ? 'Registrazione…' : `REGISTRA RESO (${skus.length} capi)`}
+            {submitting ? 'Registrazione…' : `CONFERMA RESO (${selectedItems.length} capi)`}
           </PrimaryButton>
-        )}
-      </div>
+        </div>
+      )}
     </PageShell>
   )
 }
