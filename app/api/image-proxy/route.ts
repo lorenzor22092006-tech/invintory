@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
       if (idMatch) fileId = idMatch[1]
     }
 
-    const fetchUrl = fileId
-      ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
-      : url
+    if (!fileId) {
+      return new NextResponse('URL non consentito', { status: 400 })
+    }
+    const fetchUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
 
     const response = await fetch(fetchUrl, {
       headers: {

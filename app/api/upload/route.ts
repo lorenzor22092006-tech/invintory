@@ -1,7 +1,21 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
+import { requireCeo } from '@/lib/auth'
+
+const ALLOWED_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/heic': 'jpg',
+  'image/heif': 'jpg',
+}
+const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export async function POST(request: Request) {
+  if (!(await requireCeo())) {
+    return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -10,14 +24,15 @@ export async function POST(request: Request) {
     if (!file) {
       return NextResponse.json({ error: 'Nessun file' }, { status: 400 })
     }
-
-    let ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    if (ext === 'heic' || ext === 'heif') ext = 'jpg'
-
-    let contentType = file.type || 'image/jpeg'
-    if (contentType === 'image/heic' || contentType === 'image/heif' || contentType === '') {
-      contentType = 'image/jpeg'
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File troppo grande (max 5MB)' }, { status: 400 })
     }
+
+    const ext = ALLOWED_TYPES[file.type]
+    if (!ext) {
+      return NextResponse.json({ error: 'Formato immagine non supportato' }, { status: 400 })
+    }
+    const contentType = file.type === 'image/heic' || file.type === 'image/heif' ? 'image/jpeg' : file.type
 
     const safeModello = modelloId
       .replace(/[^a-zA-Z0-9]/g, '_')
@@ -33,7 +48,7 @@ export async function POST(request: Request) {
       .from('modelli')
       .upload(filename, buffer, {
         contentType,
-        upsert: true,
+        upsert: false,
       })
 
     if (error) throw error
@@ -44,8 +59,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: urlData.publicUrl })
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.error('Upload error:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    console.error('Upload error:', error)
+    return NextResponse.json({ error: 'Errore durante il caricamento' }, { status: 500 })
   }
 }

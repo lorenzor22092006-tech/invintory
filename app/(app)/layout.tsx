@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Syne } from "next/font/google";
-import "./globals.css";
+import "../globals.css";
 import TopNav from "@/components/TopNav";
 import BottomNav from "@/components/BottomNav";
 import OrbsBackground from "@/components/OrbsBackground";

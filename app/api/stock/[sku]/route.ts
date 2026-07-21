@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase, computeGiorniRimanenti, computeStatoScadenza } from '@/lib/supabase'
+import { requireCeo } from '@/lib/auth'
 
 function rowToItem(row: Record<string, string>) {
   const giorniRimanenti = computeGiorniRimanenti(row.scadenza_reso || '')
@@ -45,6 +46,10 @@ export async function PATCH(
   req: Request,
   context: { params: Promise<{ sku: string }> }
 ) {
+  if (!(await requireCeo())) {
+    return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+  }
+
   try {
     const { sku: rawSku } = await context.params
     const sku = decodeURIComponent(rawSku)
@@ -98,6 +103,10 @@ export async function DELETE(
   _req: Request,
   context: { params: Promise<{ sku: string }> }
 ) {
+  if (!(await requireCeo())) {
+    return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+  }
+
   try {
     const { sku: rawSku } = await context.params
     const sku = decodeURIComponent(rawSku)

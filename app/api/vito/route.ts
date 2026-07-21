@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { supabase } from '@/lib/supabase'
+import { requireCeo } from '@/lib/auth'
 
 const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -133,6 +134,10 @@ async function runTool(name: string, args: Record<string, unknown>, baseUrl: str
 }
 
 export async function POST(request: Request) {
+  if (!(await requireCeo())) {
+    return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+  }
+
   try {
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({ error: 'OPENAI_API_KEY non configurata' }, { status: 500 })
@@ -214,8 +219,7 @@ Regole importanti:
       )
     }
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error)
-    console.error('Vito error:', msg)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    console.error('Vito error:', error)
+    return NextResponse.json({ error: 'Errore interno' }, { status: 500 })
   }
 }

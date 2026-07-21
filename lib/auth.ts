@@ -18,7 +18,11 @@ export interface Session {
 function getSecret(): string {
   // AUTH_SECRET dedicato se presente, altrimenti deriva dal service role key
   // (privato e stabile) così non serve configurazione extra.
-  return process.env.AUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || 'inv-dev-secret'
+  const secret = process.env.AUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret) {
+    throw new Error('AUTH_SECRET (o SUPABASE_SERVICE_ROLE_KEY) non configurato: impossibile firmare/verificare sessioni')
+  }
+  return secret
 }
 
 function b64url(input: Buffer | string): string {
