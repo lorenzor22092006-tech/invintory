@@ -73,3 +73,38 @@ export function parseEuro(val: string): number {
 export function hasSupabaseConfig(): boolean {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
 }
+
+/** Percentuale sul guadagno lordo che spetta al capo di un sub-venditore
+    su ogni vendita del sub. Fissa al 10%. */
+export const FEE_CAPO_PERCENTUALE = 10
+
+/** Legge dati fee di un venditore: la sua percentuale e (se sub-venditore) il capo. */
+export async function getVenditoreFee(
+  nome: string
+): Promise<{ feePerc: number; capo: string }> {
+  if (!nome) return { feePerc: 0, capo: '' }
+  const { data } = await supabase
+    .from('config_venditori')
+    .select('fee_percentuale, capo')
+    .eq('nome', nome)
+    .maybeSingle()
+  return {
+    feePerc: data ? Number(data.fee_percentuale) || 0 : 0,
+    capo: data && data.capo ? String(data.capo).trim() : '',
+  }
+}
+
+/** Calcola le commissioni di una vendita:
+    - fee = commissione del venditore (sua % sul guadagno lordo)
+    - feeCapo = commissione del capo del sub-venditore (10% sul guadagno lordo), 0 se nessun capo
+    - guadagnoNetto = quanto resta al CEO = lordo - fee - feeCapo */
+export function computeCommissioni(
+  guadagnoLordo: number,
+  feePerc: number,
+  capo: string
+): { fee: number; feeCapo: number; guadagnoNetto: number } {
+  const fee = (guadagnoLordo * feePerc) / 100
+  const feeCapo = capo ? (guadagnoLordo * FEE_CAPO_PERCENTUALE) / 100 : 0
+  const guadagnoNetto = guadagnoLordo - fee - feeCapo
+  return { fee, feeCapo, guadagnoNetto }
+}

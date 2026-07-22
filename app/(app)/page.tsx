@@ -43,7 +43,7 @@ export default function HomePage() {
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<StockItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [sortMode, setSortMode] = useState<'scadenza' | 'sku'>('scadenza')
+  const [sortMode, setSortMode] = useState<'scadenza' | 'sku'>('sku')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const [sortAsc, setSortAsc] = useState(true)
   const [searchHit, setSearchHit] = useState<StockItem | null>(null)

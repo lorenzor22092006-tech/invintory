@@ -21,6 +21,10 @@ export interface CapoStock {
     guadagnoLordo: number
     venditore: string
     fee: number
+    /** commissione del capo del sub-venditore su questa vendita (0 se nessun capo) */
+    feeCapo?: number
+    /** nome del capo che percepisce feeCapo (vuoto se nessun capo) */
+    capo?: string
     guadagnoNetto: number
   }
   

@@ -17,10 +17,19 @@ import {
 } from '@/components/ui'
 import { radius } from '@/lib/theme'
 
+interface TagliaStock {
+  taglia: string
+  stock: number
+  skus: string[]
+}
+
 interface ModelloItem {
   idModello: string
   categoria: string
   fotoUrl: string
+  taglie: TagliaStock[]
+  totale: number
+  // legacy (non più usati per il totale, tenuti per compatibilità)
   xsStock: number
   sStock: number
   mStock: number
@@ -128,8 +137,11 @@ export default function TagliePage() {
     return matchSearch && matchCat
   })
 
+  // totale = tutte le taglie presenti (XL/XXL/numeriche incluse), non solo XS/S/M/L
   const getTotaleStock = (item: ModelloItem) =>
-    item.xsStock + item.sStock + item.mStock + item.lStock
+    typeof item.totale === 'number'
+      ? item.totale
+      : (item.taglie || []).reduce((s, t) => s + (t.stock || 0), 0)
 
   const filteredAttivi = filtered.filter((item) => getTotaleStock(item) > 0)
   const filteredEsauriti = filtered.filter((item) => getTotaleStock(item) === 0)

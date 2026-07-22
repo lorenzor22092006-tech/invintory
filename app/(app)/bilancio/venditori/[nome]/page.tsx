@@ -50,10 +50,15 @@ export default function DettaglioVenditore() {
       fetch('/api/pagamenti').then((r) => r.json()),
     ])
       .then(([vendite, tutti]) => {
-        const fee = (vendite as { venditore: string; fee: number }[])
+        const righe = vendite as { venditore: string; fee: number; capo?: string; feeCapo?: number }[]
+        // fee proprie + quota da capo sulle vendite dei propri sub-venditori
+        const feeProprie = righe
           .filter((v) => v.venditore === nome)
           .reduce((sum, v) => sum + (v.fee || 0), 0)
-        setFeeDovuta(Math.round(fee * 100) / 100)
+        const feeDaSub = righe
+          .filter((v) => v.capo === nome)
+          .reduce((sum, v) => sum + (v.feeCapo || 0), 0)
+        setFeeDovuta(Math.round((feeProprie + feeDaSub) * 100) / 100)
         const miei = (tutti as Pagamento[]).filter((p) => p.venditore === nome)
         setPagamenti(miei)
         setLoading(false)

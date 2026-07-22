@@ -35,10 +35,16 @@ export default function PagamentiVenditoriPage() {
     ])
       .then(([cfg, vendite, pagamenti]) => {
         const nomi: string[] = (cfg.venditori || []).map((v: { nome: string }) => String(v.nome ?? '').trim()).filter(Boolean)
+        const righe = vendite as { venditore: string; fee: number; capo?: string; feeCapo?: number }[]
         const stats: VenditoreStats[] = nomi.map((nome) => {
-          const feeDovuta = (vendite as { venditore: string; fee: number }[])
+          // fee proprie + quota da capo sulle vendite dei propri sub-venditori
+          const feeProprie = righe
             .filter((v) => v.venditore === nome)
             .reduce((sum, v) => sum + (v.fee || 0), 0)
+          const feeDaSub = righe
+            .filter((v) => v.capo === nome)
+            .reduce((sum, v) => sum + (v.feeCapo || 0), 0)
+          const feeDovuta = feeProprie + feeDaSub
           const giaPagato = (pagamenti as { venditore: string; importo: number }[])
             .filter((p) => p.venditore === nome)
             .reduce((sum, p) => sum + (p.importo || 0), 0)

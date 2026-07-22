@@ -24,15 +24,28 @@ create table if not exists vendite (
   guadagno_lordo numeric not null default 0,
   venditore text not null default '',
   fee numeric not null default 0,
+  -- commissione del capo del sub-venditore su questa vendita (0 se il venditore non ha un capo)
+  fee_capo numeric not null default 0,
+  -- nome del capo che percepisce fee_capo (vuoto se nessun capo)
+  capo text not null default '',
   guadagno_netto numeric not null default 0,
   nota text not null default '',
   created_at timestamptz default now()
 );
 
+-- Se la tabella vendite esiste già senza queste colonne, aggiungile:
+alter table vendite add column if not exists fee_capo numeric not null default 0;
+alter table vendite add column if not exists capo text not null default '';
+
 create table if not exists config_venditori (
   nome text primary key,
-  fee_percentuale numeric not null default 0
+  fee_percentuale numeric not null default 0,
+  -- nome del venditore "capo" se questo è un sub-venditore (altrimenti null)
+  capo text
 );
+
+-- Se la tabella esiste già senza la colonna capo, aggiungila:
+alter table config_venditori add column if not exists capo text;
 
 create table if not exists config_categorie (
   nome text primary key

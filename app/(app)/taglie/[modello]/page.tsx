@@ -15,10 +15,18 @@ import {
 } from '@/components/ui'
 import { radius } from '@/lib/theme'
 
+interface TagliaStock {
+  taglia: string
+  stock: number
+  skus: string[]
+}
+
 interface ModelloDetail {
   idModello: string
   categoria: string
   fotoUrl: string
+  taglie: TagliaStock[]
+  // legacy
   xsStock: number
   sStock: number
   mStock: number
@@ -28,13 +36,6 @@ interface ModelloDetail {
   skuM: string
   skuL: string
 }
-
-const TAGLIE = [
-  { key: 'XS', stockKey: 'xsStock', skuKey: 'skuXS' },
-  { key: 'S',  stockKey: 'sStock',  skuKey: 'skuS'  },
-  { key: 'M',  stockKey: 'mStock',  skuKey: 'skuM'  },
-  { key: 'L',  stockKey: 'lStock',  skuKey: 'skuL'  },
-] as const
 
 function convertToJpeg(file: File): Promise<File> {
   return new Promise((resolve) => {
@@ -290,10 +291,7 @@ export default function ModelloPage() {
           <span style={{ fontSize: 12, color: colors.textMuted, fontWeight: 700, paddingLeft: 12 }}>SKU</span>
         </div>
 
-        {TAGLIE.map(({ key, stockKey, skuKey }) => {
-          const stock = item[stockKey] as number
-          const skuRaw = item[skuKey] as string
-          const skus = skuRaw ? skuRaw.split(/[;,]/).map((s) => s.trim()).filter(Boolean) : []
+        {(item.taglie || []).map(({ taglia: key, stock, skus }) => {
           const disponibile = stock > 0
           return (
             <div key={key} style={{ display: 'flex', alignItems: 'stretch', gap: 10 }}>

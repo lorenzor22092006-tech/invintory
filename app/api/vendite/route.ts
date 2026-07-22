@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabase, parseEuro } from '@/lib/supabase'
+import { supabase, parseEuro, getVenditoreFee, computeCommissioni } from '@/lib/supabase'
 import { isDemoMode } from '@/lib/demo'
 import { demoVendite } from '@/lib/demo-data'
 import { getSession } from '@/lib/auth'
@@ -30,6 +30,8 @@ export async function GET() {
       guadagnoLordo: Number(row.guadagno_lordo) || 0,
       venditore: row.venditore || '',
       fee: Number(row.fee) || 0,
+      feeCapo: Number(row.fee_capo) || 0,
+      capo: row.capo || '',
       guadagnoNetto: Number(row.guadagno_netto) || 0,
     }))
 
@@ -76,20 +78,15 @@ export async function POST(request: Request) {
     if (esito !== 'In stock' && esito !== 'Reso, ma in stock')
       return NextResponse.json({ error: 'Solo i prodotti in stock possono essere venduti' }, { status: 400 })
 
-    let feePerc = 0
-    if (venditore) {
-      const { data: venditoreDati } = await supabase
-        .from('config_venditori')
-        .select('fee_percentuale')
-        .eq('nome', venditore)
-        .maybeSingle()
-      feePerc = venditoreDati ? Number(venditoreDati.fee_percentuale) || 0 : 0
-    }
+    const { feePerc, capo: capoVenditore } = await getVenditoreFee(venditore)
 
     const prezzoAcquisto = parseEuro(String(capo.prezzo_acquisto ?? ''))
     const guadagnoLordo = prezzoVendita - prezzoAcquisto
-    const feeEuro = (guadagnoLordo * feePerc) / 100
-    const guadagnoNetto = guadagnoLordo - feeEuro
+    const { fee: feeEuro, feeCapo, guadagnoNetto } = computeCommissioni(
+      guadagnoLordo,
+      feePerc,
+      capoVenditore
+    )
 
     const { error: insertError } = await supabase.from('vendite').insert({
       sku: capo.sku,
@@ -101,6 +98,8 @@ export async function POST(request: Request) {
       guadagno_lordo: guadagnoLordo,
       venditore,
       fee: feeEuro,
+      fee_capo: feeCapo,
+      capo: capoVenditore,
       guadagno_netto: guadagnoNetto,
       nota: '',
     })
@@ -156,19 +155,14 @@ export async function PATCH(request: Request) {
       finalDataVendita = iso ? `${iso[3]}/${iso[2]}/${iso[1]}` : String(body.dataVendita)
     }
 
-    let feePerc = 0
-    if (finalVenditore) {
-      const { data: venditoreDati } = await supabase
-        .from('config_venditori')
-        .select('fee_percentuale')
-        .eq('nome', finalVenditore)
-        .maybeSingle()
-      feePerc = venditoreDati ? Number(venditoreDati.fee_percentuale) || 0 : 0
-    }
+    const { feePerc, capo: capoVenditore } = await getVenditoreFee(finalVenditore)
 
     const guadagnoLordo = finalPrezzoVendita - prezzoAcquisto
-    const feeEuro = (guadagnoLordo * feePerc) / 100
-    const guadagnoNetto = guadagnoLordo - feeEuro
+    const { fee: feeEuro, feeCapo, guadagnoNetto } = computeCommissioni(
+      guadagnoLordo,
+      feePerc,
+      capoVenditore
+    )
 
     const { error } = await supabase
       .from('vendite')
@@ -178,6 +172,8 @@ export async function PATCH(request: Request) {
         guadagno_lordo: guadagnoLordo,
         venditore: finalVenditore,
         fee: feeEuro,
+        fee_capo: feeCapo,
+        capo: capoVenditore,
         guadagno_netto: guadagnoNetto,
       })
       .eq('sku', sku)

@@ -19,6 +19,7 @@ export async function GET() {
       venditori: (venditori || []).map((r) => ({
         nome: r.nome || '',
         feePercentuale: Number(r.fee_percentuale) || 0,
+        capo: r.capo ? String(r.capo).trim() : '',
       })),
       categorie: (categorie || []).map((r) => r.nome),
     })
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   if (!(await requireCeo())) return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
 
   try {
-    const { tipo, valore, fee } = await request.json()
+    const { tipo, valore, fee, capo } = await request.json()
 
     if (tipo === 'venditore') {
       const nome = String(valore ?? '').trim()
@@ -44,7 +45,10 @@ export async function POST(request: Request) {
         .maybeSingle()
       if (existing) return NextResponse.json({ error: 'Venditore già presente' }, { status: 400 })
 
-      const { error } = await supabase.from('config_venditori').insert({ nome, fee_percentuale: fee ?? 0 })
+      const capoNome = capo !== undefined ? String(capo ?? '').trim() : ''
+      const { error } = await supabase
+        .from('config_venditori')
+        .insert({ nome, fee_percentuale: fee ?? 0, capo: capoNome || null })
       if (error) throw error
     } else if (tipo === 'categoria') {
       const nome = String(valore ?? '').trim()
@@ -72,7 +76,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json()
-    const { tipo, nomeOriginale, nome, fee } = body
+    const { tipo, nomeOriginale, nome, fee, capo } = body
 
     if (tipo === 'venditore') {
       const newNome = nome !== undefined ? String(nome).trim() : String(nomeOriginale ?? '').trim()
@@ -81,6 +85,8 @@ export async function PATCH(request: Request) {
 
       const updates: Record<string, unknown> = { nome: newNome }
       if (newFee !== undefined) updates.fee_percentuale = newFee
+      // capo: stringa vuota → null (rimuove il capo); undefined → non toccare
+      if (capo !== undefined) updates.capo = String(capo ?? '').trim() || null
 
       const { error } = await supabase
         .from('config_venditori')

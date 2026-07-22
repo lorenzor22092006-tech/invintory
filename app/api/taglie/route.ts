@@ -3,6 +3,13 @@ import { supabase } from '@/lib/supabase'
 import { isDemoMode } from '@/lib/demo'
 import { demoCategorie, demoTaglieItems } from '@/lib/demo-data'
 
+/** Ordine di visualizzazione delle taglie: prima quelle standard, poi il resto. */
+const TAGLIE_ORDINE = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+function tagliaOrder(t: string): number {
+  const i = TAGLIE_ORDINE.indexOf(String(t).trim().toUpperCase())
+  return i === -1 ? TAGLIE_ORDINE.length : i
+}
+
 export async function GET() {
   if (isDemoMode()) {
     return NextResponse.json({ items: demoTaglieItems, categorie: demoCategorie, demo: true })
@@ -45,10 +52,26 @@ export async function GET() {
       const mSkus = modelloStock['M'] || []
       const lSkus = modelloStock['L'] || []
 
+      // Elenco dinamico di TUTTE le taglie presenti per il modello (XL, XXL, numeriche, "n.d.", ...)
+      // così nessun prodotto sparisce solo perché la sua taglia non è XS/S/M/L.
+      const taglie = Object.keys(modelloStock)
+        .map((t) => ({
+          taglia: t || 'N.D.',
+          stock: modelloStock[t].length,
+          skus: modelloStock[t],
+        }))
+        .sort((a, b) => tagliaOrder(a.taglia) - tagliaOrder(b.taglia) || a.taglia.localeCompare(b.taglia, 'it', { numeric: true }))
+
+      const totale = taglie.reduce((s, t) => s + t.stock, 0)
+
       items.push({
         idModello,
         categoria,
         fotoUrl,
+        // elenco dinamico completo (usato dalle pagine)
+        taglie,
+        totale,
+        // campi legacy XS/S/M/L (retro-compatibilità)
         xsStock: xsSkus.length,
         sStock: sSkus.length,
         mStock: mSkus.length,
