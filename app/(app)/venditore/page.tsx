@@ -10,8 +10,10 @@ import {
   Skeleton,
   PrimaryButton,
   SecondaryButton,
+  IconButton,
   ErrorBox,
   colors,
+  S,
 } from '@/components/ui'
 
 interface StockItem {
@@ -34,6 +36,9 @@ export default function VenditoreHomePage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [nome, setNome] = useState('')
   const [expandedSku, setExpandedSku] = useState<string | null>(null)
+  const [sortMode, setSortMode] = useState<'scadenza' | 'sku'>('sku')
+  const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const [sortAsc, setSortAsc] = useState(true)
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -64,8 +69,13 @@ export default function VenditoreHomePage() {
         item.giorniRimanenti !== null &&
         item.giorniRimanenti >= 0
     )
-    return [...filtered].sort((a, b) => (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0))
-  }, [items])
+    return [...filtered].sort((a, b) => {
+      const cmp = sortMode === 'sku'
+        ? a.sku.localeCompare(b.sku, 'it', { numeric: true })
+        : (a.giorniRimanenti ?? 0) - (b.giorniRimanenti ?? 0)
+      return sortAsc ? cmp : -cmp
+    })
+  }, [items, sortMode, sortAsc])
 
   const getColor = (giorni: number | null) => {
     if (giorni === null) return colors.textMuted
@@ -110,6 +120,30 @@ export default function VenditoreHomePage() {
       <SectionCard
         title="Prodotti in scadenza"
         subtitle={loading ? 'Caricamento…' : `${inScadenza.length} prodotti attivi`}
+        action={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <button type="button" onClick={() => setSortMenuOpen((v) => !v)} className="inv-btn-glass" style={{ ...S.chip, ...(sortMenuOpen ? S.chipActive : {}), padding: '7px 14px', fontSize: 12 }}>
+                {sortMode === 'scadenza' ? 'Per scadenza' : 'Per SKU'} ▾
+              </button>
+              {sortMenuOpen && (
+                <div style={{ position: 'absolute', top: '110%', right: 0, zIndex: 40, ...S.card, overflow: 'hidden', minWidth: 160, padding: 0 }}>
+                  {(['scadenza', 'sku'] as const).map((mode) => (
+                    <button key={mode} type="button" onClick={() => { setSortMode(mode); setSortMenuOpen(false) }}
+                      style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', borderBottom: mode === 'scadenza' ? `1px solid ${colors.border}` : 'none', background: sortMode === mode ? colors.accentSoft : 'transparent', color: sortMode === mode ? colors.accentBright : colors.text, fontSize: 13, fontWeight: sortMode === mode ? 700 : 400, cursor: 'pointer' }}>
+                      {mode === 'scadenza' ? 'Per scadenza' : 'Per SKU'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <IconButton onClick={() => setSortAsc((v) => !v)} label="Inverti ordine" size={36}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ transform: sortAsc ? 'none' : 'rotate(180deg)', transition: 'transform 0.2s ease' }}>
+                <path d="M12 5v14M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </IconButton>
+          </div>
+        }
       >
         {loading ? (
           <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
