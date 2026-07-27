@@ -12,6 +12,8 @@ export interface Session {
   /** Nome venditore (coincide con config_venditori.nome); per il CEO è "CEO" */
   nome: string
   email: string
+  /** true se questo venditore ha un capo (è un sub-venditore, non un venditore "main") */
+  isSub?: boolean
   exp: number
 }
 

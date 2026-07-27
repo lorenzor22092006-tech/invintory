@@ -61,6 +61,7 @@ export default function RegistraResoPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [risultati, setRisultati] = useState<RisultatoSku[] | null>(null)
+  const [pacco, setPacco] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/stock')
@@ -133,6 +134,7 @@ export default function RegistraResoPage() {
         throw new Error(data.error || 'Errore registrazione')
       }
       setRisultati(data.risultati ?? [])
+      setPacco(data.pacco ?? null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Errore')
     } finally {
@@ -149,6 +151,31 @@ export default function RegistraResoPage() {
           title="Riepilogo reso"
           back={<BackButton onClick={() => router.push('/')} />}
         />
+
+        {pacco !== null && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '16px',
+              marginBottom: 12,
+              borderRadius: radius.md,
+              background: colors.accentSoft,
+              border: `1px solid ${colors.accent}`,
+            }}
+          >
+            <span style={{ fontSize: 28 }}>📦</span>
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: colors.accentBright }}>
+                Pacco reso {pacco}
+              </div>
+              <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                Prepara il pacco con questi {ok.length} {ok.length === 1 ? 'articolo' : 'articoli'} — lo trovi in Storico resi
+              </div>
+            </div>
+          </div>
+        )}
 
         {ok.length > 0 && (
           <SectionCard title={`${ok.length} capi registrati come reso`}>

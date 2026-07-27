@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { timingSafeEqual } from 'crypto'
-import { hasSupabaseConfig } from '@/lib/supabase'
+import { hasSupabaseConfig, supabase } from '@/lib/supabase'
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth'
 
 const MAX_ATTEMPTS = 5
@@ -77,7 +77,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Account non collegato a un venditore' }, { status: 403 })
     }
 
-    const token = createSessionToken({ role: 'venditore', nome, email }, remember)
+    // Query dati con il client service-role condiviso (NON authClient: dopo
+    // signInWithPassword quel client passa al token dell'utente loggato e le
+    // query successive tornano vuote invece di usare i permessi service-role).
+    const { data: venditoreConfig } = await supabase
+      .from('config_venditori')
+      .select('capo')
+      .eq('nome', nome)
+      .maybeSingle()
+    const isSub = Boolean(venditoreConfig?.capo)
+
+    const token = createSessionToken({ role: 'venditore', nome, email, isSub }, remember)
     const res = NextResponse.json({ success: true, role: 'venditore', nome })
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions(remember))
     return res

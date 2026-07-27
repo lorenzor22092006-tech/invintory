@@ -17,6 +17,7 @@ export async function GET() {
       numeroOrdine: row.numero_ordine || '',
       prezzoAcquisto: row.prezzo_acquisto || '',
       dataReso: row.data_reso || '',
+      pacco: row.pacco ?? null,
     }))
 
     return NextResponse.json(resi)
@@ -36,6 +37,16 @@ export async function POST(request: Request) {
 
     const oggi = new Date()
     const dataReso = `${String(oggi.getDate()).padStart(2, '0')}/${String(oggi.getMonth() + 1).padStart(2, '0')}/${oggi.getFullYear()}`
+
+    // numero pacco = progressivo globale (max attuale + 1), condiviso tra CEO e venditori
+    const { data: ultimo } = await supabase
+      .from('resi')
+      .select('pacco')
+      .not('pacco', 'is', null)
+      .order('pacco', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const pacco = (ultimo?.pacco ?? 0) + 1
 
     const risultati: { sku: string; ok: boolean; errore?: string }[] = []
 
@@ -76,6 +87,7 @@ export async function POST(request: Request) {
         numero_ordine: capo.numero_ordine || '',
         prezzo_acquisto: capo.prezzo_acquisto || '',
         data_reso: dataReso,
+        pacco,
       })
 
       risultati.push({ sku, ok: true })
@@ -86,7 +98,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nessun SKU valido', risultati }, { status: 400 })
     }
 
-    return NextResponse.json({ success: true, risultati })
+    // pacco valido solo se almeno un SKU è stato registrato
+    const creato = risultati.some((r) => r.ok)
+    return NextResponse.json({ success: true, risultati, pacco: creato ? pacco : null })
   } catch (error) {
     return NextResponse.json({ error: 'Errore registrazione resi' }, { status: 500 })
   }

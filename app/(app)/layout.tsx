@@ -6,6 +6,7 @@ import BottomNav from "@/components/BottomNav";
 import OrbsBackground from "@/components/OrbsBackground";
 import SetupBanner from "@/components/SetupBanner";
 import VitoButton from "@/components/VitoButton";
+import DevRoleSwitcher from "@/components/DevRoleSwitcher";
 import { SessionProvider } from "@/lib/use-session";
 
 // Vito AI non ancora configurato: rimetti a true per riattivare il bottone chat
@@ -45,6 +46,7 @@ export default function RootLayout({
       >
         <SessionProvider>
           <OrbsBackground />
+          <DevRoleSwitcher />
           <TopNav />
           <SetupBanner />
           <main style={{ position: "relative", zIndex: 1 }}>{children}</main>

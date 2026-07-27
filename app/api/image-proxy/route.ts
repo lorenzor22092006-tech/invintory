@@ -9,31 +9,38 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Estrai l'ID del file da qualsiasi formato di URL Google Drive
-    let fileId: string | null = null
+    let fetchUrl: string
+    let fetchHeaders: Record<string, string> = {}
 
-    // Formato: /file/d/FILE_ID/
-    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
-    if (fileMatch) fileId = fileMatch[1]
+    // Foto caricate su Supabase Storage (bucket pubblico "modelli"): passa diretto.
+    if (/\.supabase\.co\/storage\/v1\/object\/public\//.test(url)) {
+      fetchUrl = url
+    } else {
+      // Foto storiche su Google Drive: estrai l'ID e usa il thumbnail pubblico.
+      let fileId: string | null = null
 
-    // Formato: ?id=FILE_ID o &id=FILE_ID
-    if (!fileId) {
-      const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
-      if (idMatch) fileId = idMatch[1]
-    }
+      // Formato: /file/d/FILE_ID/
+      const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+      if (fileMatch) fileId = fileMatch[1]
 
-    if (!fileId) {
-      return new NextResponse('URL non consentito', { status: 400 })
-    }
-    const fetchUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
+      // Formato: ?id=FILE_ID o &id=FILE_ID
+      if (!fileId) {
+        const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)
+        if (idMatch) fileId = idMatch[1]
+      }
 
-    const response = await fetch(fetchUrl, {
-      headers: {
+      if (!fileId) {
+        return new NextResponse('URL non consentito', { status: 400 })
+      }
+      fetchUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`
+      fetchHeaders = {
         'User-Agent':
           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         Referer: 'https://drive.google.com/',
-      },
-    })
+      }
+    }
+
+    const response = await fetch(fetchUrl, { headers: fetchHeaders })
 
     if (!response.ok) {
       return new NextResponse('Failed to fetch image', { status: response.status })

@@ -3,16 +3,19 @@ import type { NextRequest } from 'next/server'
 import { SESSION_COOKIE, verifySessionToken } from '@/lib/auth'
 
 /** Percorsi raggiungibili senza login */
-const PUBLIC_PATHS = ['/login', '/link', '/api/auth/login', '/api/auth/logout', '/api/health']
+const PUBLIC_PATHS = ['/login', '/link', '/api/auth/login', '/api/auth/logout', '/api/health', '/api/dev']
 
 /** Pagine consentite ai venditori (prefissi) */
 const SELLER_ALLOWED = [
   '/venditore',
   '/taglie',
   '/vendite/nuova',
-  '/resi/nuovo',
+  '/resi',
   '/stock/nuovo',
 ]
+
+/** Prefissi vietati ai sub-venditori: possono solo registrare vendite, non gestire resi/stock */
+const SUB_FORBIDDEN = ['/resi', '/stock/nuovo']
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -48,7 +51,9 @@ export function proxy(request: NextRequest) {
 
   if (session.role === 'venditore') {
     const allowed = SELLER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + '/'))
-    if (!allowed) {
+    const vietatoPerSub =
+      session.isSub && SUB_FORBIDDEN.some((p) => pathname === p || pathname.startsWith(p + '/'))
+    if (!allowed || vietatoPerSub) {
       const url = request.nextUrl.clone()
       url.pathname = '/venditore'
       url.search = ''

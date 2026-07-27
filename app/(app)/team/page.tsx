@@ -23,6 +23,7 @@ const ADMIN_PASSWORD = 'TESTAdiminchia1$'
 interface Venditore {
   nome: string
   feePercentuale: number
+  capo: string
 }
 
 type Sheet =
@@ -45,6 +46,7 @@ export default function TeamPage() {
   // form venditore
   const [fNome, setFNome] = useState('')
   const [fFee, setFFee] = useState('')
+  const [fCapo, setFCapo] = useState('')
 
   // form categoria
   const [fCat, setFCat] = useState('')
@@ -84,9 +86,11 @@ export default function TeamPage() {
     if (s?.tipo === 'edit-venditore') {
       setFNome(s.venditore.nome)
       setFFee(String(s.venditore.feePercentuale))
+      setFCapo(s.venditore.capo || '')
     } else if (s?.tipo === 'add-venditore') {
       setFNome('')
       setFFee('')
+      setFCapo('')
     } else if (s?.tipo === 'edit-categoria') {
       setFCat(s.nome)
     } else if (s?.tipo === 'add-categoria') {
@@ -147,9 +151,9 @@ export default function TeamPage() {
     setError(null)
     try {
       if (sheet.tipo === 'add-venditore') {
-        await api('POST', { tipo: 'venditore', valore: nome, fee })
+        await api('POST', { tipo: 'venditore', valore: nome, fee, capo: fCapo })
       } else if (sheet.tipo === 'edit-venditore') {
-        await api('PATCH', { tipo: 'venditore', nomeOriginale: sheet.venditore.nome, nome, fee })
+        await api('PATCH', { tipo: 'venditore', nomeOriginale: sheet.venditore.nome, nome, fee, capo: fCapo })
       }
       closeSheet()
       load()
@@ -300,11 +304,28 @@ export default function TeamPage() {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {v.nome}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {v.nome}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          padding: '2px 7px',
+                          borderRadius: 999,
+                          flexShrink: 0,
+                          background: v.capo ? 'rgba(217,119,6,0.15)' : colors.accentSoft,
+                          color: v.capo ? '#D97706' : colors.accentBright,
+                        }}
+                      >
+                        {v.capo ? 'Sub' : 'Main'}
+                      </span>
                     </div>
                     <div style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                      Fee: {v.feePercentuale}%
+                      Fee: {v.feePercentuale}%{v.capo ? ` · capo: ${v.capo}` : ''}
                     </div>
                   </div>
 
@@ -448,6 +469,31 @@ export default function TeamPage() {
               <div>
                 <FormLabel>Fee % (commissione)</FormLabel>
                 <FormInput value={fFee} onChange={setFFee} placeholder="es. 5" type="number" step="0.1" />
+              </div>
+              <div>
+                <FormLabel>Capo (opzionale — rende questo venditore un sub)</FormLabel>
+                <select
+                  value={fCapo}
+                  onChange={(e) => setFCapo(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: colors.bgInput,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 14,
+                    padding: '13px 16px',
+                    color: colors.text,
+                    fontSize: 15,
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <option value="">Nessuno — venditore main</option>
+                  {venditori
+                    .filter((v) => v.nome !== fNome && !v.capo)
+                    .map((v) => (
+                      <option key={v.nome} value={v.nome}>{v.nome}</option>
+                    ))}
+                </select>
               </div>
             </div>
 
