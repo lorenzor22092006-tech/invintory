@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
-import { requireCeo } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth'
 
 const ALLOWED_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -12,8 +12,8 @@ const ALLOWED_TYPES: Record<string, string> = {
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 export async function POST(request: Request) {
-  if (!(await requireCeo())) {
-    return NextResponse.json({ error: 'Operazione riservata al CEO' }, { status: 403 })
+  if (!(await requireAuth())) {
+    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
   }
 
   try {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { isDemoMode } from '@/lib/demo'
+import { requireAuth } from '@/lib/auth'
 import { demoCategorie, demoTaglieItems } from '@/lib/demo-data'
 
 /** Ordine di visualizzazione delle taglie: prima quelle standard, poi il resto. */
@@ -99,6 +100,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await requireAuth())) {
+    return NextResponse.json({ error: 'Non autenticato' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const idModello = String(body.idModello ?? '').trim().toUpperCase()

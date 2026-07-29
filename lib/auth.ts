@@ -79,6 +79,11 @@ export async function requireCeo(): Promise<Session | null> {
   return s?.role === 'ceo' ? s : null
 }
 
+/** Utente loggato con qualsiasi ruolo (CEO o venditore) */
+export async function requireAuth(): Promise<Session | null> {
+  return await getSession()
+}
+
 export function sessionCookieOptions(remember = false) {
   return {
     httpOnly: true,
